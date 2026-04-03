@@ -1,0 +1,11 @@
+services:
+  - type: web
+    name: moneymap
+    runtime: python
+    buildCommand: pip install -r requirements.txt
+    startCommand: gunicorn app:app --workers 2 --bind 0.0.0.0:$PORT --timeout 120
+    envVars:
+      - key: SECRET_KEY
+        generateValue: true          # Render auto-generates a strong random key
+      - key: FIREBASE_CREDENTIALS_JSON
+        sync: false                  # You paste the JSON manually in Render dashboard
