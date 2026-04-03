@@ -1,0 +1,175 @@
+{% extends "base.html" %}
+{% set active = "investments" %}
+{% block title %}Investments – MoneyMap{% endblock %}
+
+{% block content %}
+<div class="topbar">
+  <div class="topbar-left">
+    <h1>📈 Investments</h1>
+    <p>Track your portfolio performance</p>
+  </div>
+  <div class="topbar-actions">
+    <button class="btn btn-report-excel btn-sm"
+            onclick="MM.downloadReport('excel', MM.currentMonth())">📊 Excel Report</button>
+    <button class="btn btn-primary btn-sm" onclick="MM.openModal('invModal')">+ Add Investment</button>
+  </div>
+</div>
+
+<div class="stats-grid mb-2">
+  <div class="stat-card balance">
+    <div class="stat-icon">💼</div>
+    <div class="stat-label">Total Invested</div>
+    <div class="stat-value num" id="totalInvested">—</div>
+  </div>
+  <div class="stat-card income">
+    <div class="stat-icon">📈</div>
+    <div class="stat-label">Current Value</div>
+    <div class="stat-value num" id="currentValue">—</div>
+  </div>
+  <div class="stat-card neutral" id="gainCard">
+    <div class="stat-icon" id="gainIcon">💰</div>
+    <div class="stat-label">Total Gain / Loss</div>
+    <div class="stat-value num" id="totalGain">—</div>
+  </div>
+</div>
+
+<div class="card">
+  <div class="card-title">Portfolio</div>
+  <div class="table-wrap">
+    <table>
+      <thead><tr>
+        <th>Name</th><th>Type</th><th>Date</th>
+        <th class="text-right">Invested</th>
+        <th class="text-right">Current Value</th>
+        <th class="text-right">Gain / Loss</th>
+        <th>Action</th>
+      </tr></thead>
+      <tbody id="invTable">
+        <tr><td colspan="7" class="text-center text-muted" style="padding:2rem">Loading...</td></tr>
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<!-- Add Investment Modal -->
+<div class="modal-overlay" id="invModal">
+  <div class="modal">
+    <div class="modal-header">
+      <h3>Add Investment</h3>
+      <button class="modal-close" onclick="MM.closeModal('invModal')">✕</button>
+    </div>
+    <div class="form-group">
+      <label>Investment Name</label>
+      <input type="text" id="invName" placeholder="e.g. HDFC Mutual Fund, Gold ETF">
+    </div>
+    <div class="form-group">
+      <label>Type</label>
+      <select id="invType">
+        <option>Mutual Fund</option>
+        <option>Stocks</option>
+        <option>Fixed Deposit</option>
+        <option>Gold</option>
+        <option>Real Estate</option>
+        <option>Crypto</option>
+        <option>PPF / NPS</option>
+        <option>Other</option>
+      </select>
+    </div>
+    <div class="form-group">
+      <label>Amount Invested (₹)</label>
+      <input type="number" id="invAmt" placeholder="50000" min="1">
+    </div>
+    <div class="form-group">
+      <label>Current Value (₹)</label>
+      <input type="number" id="invCurrent" placeholder="52000" min="0">
+    </div>
+    <div class="form-group">
+      <label>Investment Date</label>
+      <input type="date" id="invDate">
+    </div>
+    <div class="form-group">
+      <label>Note (optional)</label>
+      <input type="text" id="invNote" placeholder="Any notes">
+    </div>
+    <button class="btn btn-primary btn-block" onclick="saveInv()">Add Investment</button>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+const TYPE_ICONS = {
+  'Mutual Fund': '📊', 'Stocks': '📈', 'Fixed Deposit': '🏦',
+  'Gold': '🥇', 'Real Estate': '🏠', 'Crypto': '₿',
+  'PPF / NPS': '📋', 'Other': '💼',
+};
+
+async function load() {
+  const invs = await MM.get('/api/investments');
+
+  const totalInvested = invs.reduce((s, i) => s + i.amount, 0);
+  const currentValue  = invs.reduce((s, i) => s + (i.current_val || i.amount), 0);
+  const gain          = currentValue - totalInvested;
+
+  document.getElementById('totalInvested').textContent = MM.fmt(totalInvested);
+  document.getElementById('currentValue').textContent  = MM.fmt(currentValue);
+  document.getElementById('totalGain').textContent     = (gain >= 0 ? '+' : '') + MM.fmt(gain);
+  document.getElementById('totalGain').style.color     = gain >= 0 ? 'var(--success)' : 'var(--danger)';
+  document.getElementById('gainIcon').textContent      = gain >= 0 ? '📈' : '📉';
+
+  const tbody = document.getElementById('invTable');
+  if (!invs.length) {
+    tbody.innerHTML = '<tr><td colspan="7" class="text-center text-muted" style="padding:2rem">No investments yet. Add your first one!</td></tr>';
+    return;
+  }
+
+  tbody.innerHTML = invs.map(inv => {
+    const g   = (inv.current_val || inv.amount) - inv.amount;
+    const pct = inv.amount > 0 ? ((g / inv.amount) * 100).toFixed(1) : 0;
+    const icon = TYPE_ICONS[inv.type] || '💼';
+    return `
+      <tr>
+        <td><strong>${inv.name}</strong></td>
+        <td><span class="badge badge-neutral">${icon} ${inv.type}</span></td>
+        <td class="text-sm text-muted">${inv.invest_date || '—'}</td>
+        <td class="text-right font-mono">${MM.fmt(inv.amount)}</td>
+        <td class="text-right font-mono font-bold">${MM.fmt(inv.current_val || inv.amount)}</td>
+        <td class="text-right font-mono font-bold ${g >= 0 ? 'text-success' : 'text-danger'}">
+          ${g >= 0 ? '+' : ''}${MM.fmt(g)} <span class="text-xs">(${pct}%)</span>
+        </td>
+        <td>
+          <button class="btn btn-danger btn-xs" onclick="delInv('${inv.id}')">✕</button>
+        </td>
+      </tr>
+    `;
+  }).join('');
+}
+
+async function saveInv() {
+  const name    = document.getElementById('invName').value.trim();
+  const amt     = parseFloat(document.getElementById('invAmt').value);
+  const current = parseFloat(document.getElementById('invCurrent').value) || amt;
+  const date    = document.getElementById('invDate').value;
+  if (!name || !amt || !date) return MM.toast('Name, amount and date are required.', 'error');
+  await MM.post('/api/investments', {
+    name, type: document.getElementById('invType').value,
+    amount: amt, current_val: current, invest_date: date,
+    note: document.getElementById('invNote').value,
+  });
+  MM.closeModal('invModal');
+  MM.toast('Investment added! ✅');
+  ['invName','invAmt','invCurrent','invNote'].forEach(id => document.getElementById(id).value = '');
+  load();
+}
+
+async function delInv(id) {
+  if (!confirm('Delete this investment?')) return;
+  await MM.del('/api/investments/' + id);
+  MM.toast('Investment deleted.');
+  load();
+}
+
+document.getElementById('invDate').valueAsDate = new Date();
+load();
+</script>
+{% endblock %}

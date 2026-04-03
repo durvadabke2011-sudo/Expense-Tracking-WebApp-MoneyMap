@@ -1,0 +1,271 @@
+{% extends "base.html" %}
+{% set active = "settings" %}
+{% block title %}Settings – MoneyMap{% endblock %}
+
+{% block content %}
+<div class="topbar">
+  <div class="topbar-left">
+    <h1>⚙️ Settings</h1>
+    <p>Profile, preferences, security and more</p>
+  </div>
+</div>
+
+<div class="grid-2">
+
+  <!-- ── PROFILE ────────────────────────────────────────────────── -->
+  <div class="card">
+    <div class="card-title">👤 Profile</div>
+
+    <!-- Avatar banner -->
+    <div style="display:flex;align-items:center;gap:1rem;padding:1rem;background:var(--primary-light);border-radius:.6rem;margin-bottom:1.2rem;border:1px solid var(--border);">
+      <div id="avatarCircle" style="width:54px;height:54px;background:var(--primary);border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:1.4rem;font-weight:800;color:#fff;flex-shrink:0;">
+        {{ session.get('user_name','U')[0]|upper }}
+      </div>
+      <div>
+        <div id="profileDisplayName" style="font-size:1rem;font-weight:800;color:var(--text)">{{ session.get('user_name','User') }}</div>
+        <div id="profileDisplayEmail" class="text-sm text-muted">Loading…</div>
+      </div>
+    </div>
+
+    <div class="form-group">
+      <label>Full Name</label>
+      <input type="text" id="profName" placeholder="Your Name">
+    </div>
+    <div class="form-group">
+      <label>Email Address</label>
+      <input type="email" id="profEmail" disabled>
+    </div>
+    <div class="form-group">
+      <label>Member Since</label>
+      <input type="text" id="profSince" disabled>
+    </div>
+    <button class="btn btn-primary" onclick="saveProfile()">💾 Update Profile</button>
+  </div>
+
+  <!-- ── APPEARANCE ─────────────────────────────────────────────── -->
+  <div class="card">
+    <div class="card-title">🎨 Appearance & Preferences</div>
+
+    <div class="setting-section-label">Theme</div>
+
+    <div class="setting-row">
+      <div class="setting-row-left">
+        <div class="row-title">🌙 Dark Mode</div>
+        <div class="row-sub">Switch between light and dark colour scheme</div>
+      </div>
+      <label class="toggle-switch">
+        <input type="checkbox" class="theme-checkbox" id="darkModeToggle" onchange="toggleTheme(this)">
+        <span class="toggle-slider"></span>
+      </label>
+    </div>
+
+    <div class="setting-section-label" style="margin-top:1.2rem">Currency</div>
+
+    <div class="form-group">
+      <label>Display Currency</label>
+      <select id="currency" onchange="savePref()">
+        <option value="INR">🇮🇳 INR – Indian Rupee (₹)</option>
+        <option value="USD">🇺🇸 USD – US Dollar ($)</option>
+        <option value="EUR">🇪🇺 EUR – Euro (€)</option>
+        <option value="GBP">🇬🇧 GBP – British Pound (£)</option>
+        <option value="JPY">🇯🇵 JPY – Japanese Yen (¥)</option>
+        <option value="AED">🇦🇪 AED – UAE Dirham</option>
+        <option value="SGD">🇸🇬 SGD – Singapore Dollar</option>
+        <option value="CAD">🇨🇦 CAD – Canadian Dollar</option>
+        <option value="AUD">🇦🇺 AUD – Australian Dollar</option>
+      </select>
+    </div>
+
+    <button class="btn btn-primary btn-sm" onclick="savePref()">💾 Save Preferences</button>
+  </div>
+
+  <!-- ── SECURITY ───────────────────────────────────────────────── -->
+  <div class="card">
+    <div class="card-title">🔒 Security – Change Password</div>
+    <div class="form-group">
+      <label>Current Password</label>
+      <input type="password" id="oldPwd" placeholder="Enter current password">
+    </div>
+    <div class="form-group">
+      <label>New Password</label>
+      <input type="password" id="newPwd" placeholder="Minimum 6 characters">
+    </div>
+    <div class="form-group">
+      <label>Confirm New Password</label>
+      <input type="password" id="confirmPwd" placeholder="Repeat new password">
+    </div>
+
+    <!-- Password strength bar -->
+    <div id="pwdStrengthWrap" style="display:none;margin-bottom:1rem;">
+      <div class="flex-between text-xs text-muted mb-1">
+        <span>Password strength</span>
+        <span id="pwdStrengthLabel">—</span>
+      </div>
+      <div class="progress-bar">
+        <div class="progress-fill" id="pwdStrengthBar" style="width:0%;transition:width .3s;"></div>
+      </div>
+    </div>
+
+    <button class="btn btn-warning" onclick="changePwd()">🔑 Change Password</button>
+  </div>
+
+  <!-- ── NOTIFICATIONS & REPORTS ────────────────────────────────── -->
+  <div class="card">
+    <div class="card-title">🔔 Notifications & Reports</div>
+
+    <div class="setting-section-label">How reminders work</div>
+    <div class="info-row"><span class="info-icon">🔔</span><span>Bill & subscription reminders are shown on their respective pages with due-date badges.</span></div>
+    <div class="info-row"><span class="info-icon">💰</span><span>Budget overspend alerts appear on the Budgets page with a red progress bar.</span></div>
+    <div class="info-row"><span class="info-icon">❤️‍🔥</span><span>Your Financial Health Score and smart tips appear on the Dashboard.</span></div>
+    <div class="info-row"><span class="info-icon">✈️</span><span>Trip budget alerts are shown inline on the Trips page.</span></div>
+
+    <div class="setting-section-label" style="margin-top:1.2rem">Download Reports</div>
+    <p class="text-sm text-muted mb-1">Download a professional financial report for the current month.</p>
+    <div style="display:flex;gap:.6rem;flex-wrap:wrap">
+      <button class="btn btn-report-pdf"
+              onclick="MM.downloadReport('pdf', MM.currentMonth())">
+        📄 Download PDF
+      </button>
+      <button class="btn btn-report-excel"
+              onclick="MM.downloadReport('excel', MM.currentMonth())">
+        📊 Download Excel
+      </button>
+    </div>
+
+    <div class="divider" style="margin-top:1.5rem"></div>
+
+    <div class="setting-section-label">Danger Zone</div>
+    <button class="btn btn-sm"
+            style="background:var(--danger-light);color:var(--danger);font-weight:700;border:1px solid var(--danger-light)"
+            onclick="if(confirm('Are you sure you want to logout?')) location.href='/logout'">
+      🚪 Logout Account
+    </button>
+  </div>
+
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+// ── Theme toggle ──────────────────────────────────────────────────
+function toggleTheme(checkbox) {
+  const theme = checkbox.checked ? 'dark' : 'light';
+  MM.theme.set(theme);
+  // Save to backend
+  MM.post('/api/settings', { currency: document.getElementById('currency').value, theme })
+    .catch(() => {});
+  MM.toast(`${theme === 'dark' ? '🌙 Dark' : '☀️ Light'} mode enabled`);
+}
+
+// Sync toggle state with current theme on load
+function syncThemeToggle() {
+  const isDark = MM.theme.get() === 'dark';
+  const cb = document.getElementById('darkModeToggle');
+  if (cb) cb.checked = isDark;
+}
+
+// ── Password strength ─────────────────────────────────────────────
+document.getElementById('newPwd').addEventListener('input', function () {
+  const val = this.value;
+  const wrap = document.getElementById('pwdStrengthWrap');
+  const bar  = document.getElementById('pwdStrengthBar');
+  const lbl  = document.getElementById('pwdStrengthLabel');
+
+  if (!val) { wrap.style.display = 'none'; return; }
+  wrap.style.display = 'block';
+
+  let score = 0;
+  if (val.length >= 6)  score++;
+  if (val.length >= 10) score++;
+  if (/[A-Z]/.test(val)) score++;
+  if (/[0-9]/.test(val)) score++;
+  if (/[^A-Za-z0-9]/.test(val)) score++;
+
+  const levels = [
+    { pct: 20,  color: 'var(--danger)',  label: 'Very Weak' },
+    { pct: 40,  color: 'var(--danger)',  label: 'Weak' },
+    { pct: 60,  color: 'var(--warning)', label: 'Fair' },
+    { pct: 80,  color: 'var(--primary)', label: 'Strong' },
+    { pct: 100, color: 'var(--success)', label: 'Very Strong' },
+  ];
+  const level = levels[Math.min(score, 4)];
+  bar.style.width      = level.pct + '%';
+  bar.style.background = level.color;
+  lbl.textContent      = level.label;
+  lbl.style.color      = level.color;
+});
+
+// ── Load profile ──────────────────────────────────────────────────
+async function loadProfile() {
+  try {
+    const d = await MM.get('/api/profile');
+
+    document.getElementById('profName').value  = d.user.name;
+    document.getElementById('profEmail').value = d.user.email;
+    document.getElementById('profSince').value = d.user.created_at
+      ? new Date(d.user.created_at).toLocaleDateString('en-IN', { day:'numeric', month:'long', year:'numeric' })
+      : '—';
+    document.getElementById('profileDisplayEmail').textContent = d.user.email;
+
+    const pref = d.preferences || {};
+    if (pref.currency) document.getElementById('currency').value = pref.currency;
+
+    // Sync theme from server preference (or local storage takes priority)
+    const savedTheme = MM.theme.get();
+    MM.theme.set(savedTheme);  // apply current
+    syncThemeToggle();
+
+  } catch (e) {
+    MM.toast('Could not load profile.', 'error');
+  }
+}
+
+// ── Save profile ──────────────────────────────────────────────────
+async function saveProfile() {
+  const name = document.getElementById('profName').value.trim();
+  if (!name) return MM.toast('Name is required.', 'error');
+  await MM.put('/api/profile', { name });
+  document.getElementById('profileDisplayName').textContent = name;
+  MM.toast('Profile updated! ✅');
+}
+
+// ── Save preferences ──────────────────────────────────────────────
+async function savePref() {
+  const currency = document.getElementById('currency').value;
+  const theme    = MM.theme.get();
+  await MM.post('/api/settings', { currency, theme });
+  MM.toast('Preferences saved! ✅');
+}
+
+// ── Change password ───────────────────────────────────────────────
+async function changePwd() {
+  const old = document.getElementById('oldPwd').value;
+  const np  = document.getElementById('newPwd').value;
+  const cp  = document.getElementById('confirmPwd').value;
+
+  if (!old || !np || !cp) return MM.toast('All password fields are required.', 'error');
+  if (np !== cp)           return MM.toast('New passwords do not match.', 'error');
+  if (np.length < 6)       return MM.toast('Password must be at least 6 characters.', 'error');
+
+  try {
+    const res = await fetch('/api/change-password', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ old_password: old, new_password: np }),
+    });
+    const d = await res.json();
+    if (res.ok) {
+      MM.toast('Password changed successfully! 🔐');
+      ['oldPwd','newPwd','confirmPwd'].forEach(id => document.getElementById(id).value = '');
+      document.getElementById('pwdStrengthWrap').style.display = 'none';
+    } else {
+      MM.toast(d.message || 'Password change failed.', 'error');
+    }
+  } catch {
+    MM.toast('An error occurred. Please try again.', 'error');
+  }
+}
+
+loadProfile();
+</script>
+{% endblock %}

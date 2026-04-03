@@ -1,0 +1,113 @@
+{% extends "base.html" %}
+{% set active = "budgets" %}
+{% block title %}Budgets – MoneyMap{% endblock %}
+
+{% block content %}
+<div class="topbar">
+  <div class="topbar-left">
+    <h1>💰 Budgets</h1>
+    <p>Set monthly spending limits per category</p>
+  </div>
+  <div class="topbar-actions">
+    <input type="month" id="monthPicker" class="btn btn-ghost"
+           style="font-family:inherit;cursor:pointer;">
+    <button class="btn btn-primary btn-sm" onclick="MM.openModal('budgetModal')">+ Add Budget</button>
+  </div>
+</div>
+
+<div id="budgetList"><div class="empty-state"><div class="empty-icon">💰</div><p>Loading...</p></div></div>
+
+<!-- Add Budget Modal -->
+<div class="modal-overlay" id="budgetModal">
+  <div class="modal">
+    <div class="modal-header">
+      <h3>New Budget</h3>
+      <button class="modal-close" onclick="MM.closeModal('budgetModal')">✕</button>
+    </div>
+    <div class="form-group">
+      <label>Expense Category</label>
+      <select id="budCat"></select>
+    </div>
+    <div class="form-group">
+      <label>Monthly Limit (₹)</label>
+      <input type="number" id="budAmt" placeholder="5000" min="1">
+    </div>
+    <button class="btn btn-primary btn-block" onclick="saveBudget()">Save Budget</button>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+const picker = document.getElementById('monthPicker');
+picker.value = MM.currentMonth();
+picker.addEventListener('change', load);
+
+async function load() {
+  const month = picker.value;
+  const [budgets, cats] = await Promise.all([
+    MM.get(`/api/budgets?month=${month}`),
+    MM.get('/api/categories'),
+  ]);
+
+  // Populate category dropdown
+  const expCats = cats.filter(c => c.type === 'expense');
+  document.getElementById('budCat').innerHTML =
+    expCats.map(c => `<option value="${c.id}">${c.name}</option>`).join('');
+
+  const el = document.getElementById('budgetList');
+  if (!budgets.length) {
+    el.innerHTML = '<div class="empty-state"><div class="empty-icon">💰</div><p>No budgets for this month. Add one to get started!</p></div>';
+    return;
+  }
+
+  el.innerHTML = budgets.map(b => {
+    const pct  = b.amount > 0 ? Math.min(100, Math.round(b.spent / b.amount * 100)) : 0;
+    const over = b.spent > b.amount && b.amount > 0;
+    const barColor = over ? 'var(--danger)' : pct > 75 ? 'var(--warning)' : 'var(--success)';
+    return `
+      <div class="card mb-1">
+        <div class="flex-between mb-1">
+          <div>
+            <span style="font-weight:700">${b.category}</span>
+            ${over ? '<span class="badge badge-expense" style="margin-left:.5rem">⚠️ Over Budget</span>' : ''}
+          </div>
+          <button class="btn btn-danger btn-xs" onclick="delBudget('${b.id}')">✕ Remove</button>
+        </div>
+        <div class="flex-between text-sm text-muted mb-1">
+          <span>Spent: <strong class="${over ? 'text-danger' : 'text-success'}">${MM.fmt(b.spent)}</strong></span>
+          <span>Limit: <strong>${MM.fmt(b.amount)}</strong></span>
+        </div>
+        <div class="progress-bar">
+          <div class="progress-fill" style="width:${pct}%;background:${barColor}"></div>
+        </div>
+        <div class="text-xs text-muted mt-1">${pct}% used · Remaining: ${MM.fmt(Math.max(0, b.amount - b.spent))}</div>
+      </div>
+    `;
+  }).join('');
+}
+
+async function saveBudget() {
+  const amt = parseFloat(document.getElementById('budAmt').value);
+  if (!amt) return MM.toast('Enter a valid amount.', 'error');
+  await MM.post('/api/budgets', {
+    category_id: document.getElementById('budCat').value,
+    amount: amt,
+    month: picker.value,
+  });
+  MM.closeModal('budgetModal');
+  MM.toast('Budget saved! ✅');
+  document.getElementById('budAmt').value = '';
+  load();
+}
+
+async function delBudget(id) {
+  if (!confirm('Remove this budget?')) return;
+  await MM.del('/api/budgets/' + id);
+  MM.toast('Budget removed.');
+  load();
+}
+
+load();
+</script>
+{% endblock %}

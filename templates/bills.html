@@ -1,0 +1,190 @@
+{% extends "base.html" %}
+{% set active = "bills" %}
+{% block title %}Bills – MoneyMap{% endblock %}
+
+{% block content %}
+<div class="topbar">
+  <div class="topbar-left">
+    <h1>🔔 Bills</h1>
+    <p>Track recurring bills and payment reminders</p>
+  </div>
+  <div class="topbar-actions">
+    <button class="btn btn-primary btn-sm" onclick="MM.openModal('billModal')">+ Add Bill</button>
+  </div>
+</div>
+
+<!-- Summary row -->
+<div class="stats-grid mb-2">
+  <div class="stat-card expense">
+    <div class="stat-icon">🔔</div>
+    <div class="stat-label">Total Monthly Bills</div>
+    <div class="stat-value num" id="totalBills">—</div>
+  </div>
+  <div class="stat-card neutral">
+    <div class="stat-icon">✅</div>
+    <div class="stat-label">Paid This Month</div>
+    <div class="stat-value num" id="paidCount">—</div>
+  </div>
+  <div class="stat-card warning" style="--warning-bg:#fef3c7">
+    <div class="stat-icon" style="background:var(--warning-light)">⏳</div>
+    <div class="stat-label">Unpaid Remaining</div>
+    <div class="stat-value num" id="unpaidCount">—</div>
+  </div>
+</div>
+
+<div class="card">
+  <div class="card-title">All Bills</div>
+  <div class="table-wrap">
+    <table>
+      <thead><tr>
+        <th>Bill Name</th><th>Category</th><th>Due Day</th>
+        <th class="text-right">Amount</th><th>Status</th><th>Actions</th>
+      </tr></thead>
+      <tbody id="billTable">
+        <tr><td colspan="6" class="text-center text-muted" style="padding:2rem">Loading...</td></tr>
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<!-- Add Bill Modal -->
+<div class="modal-overlay" id="billModal">
+  <div class="modal">
+    <div class="modal-header">
+      <h3>Add Bill</h3>
+      <button class="modal-close" onclick="MM.closeModal('billModal')">✕</button>
+    </div>
+    <div class="form-group">
+      <label>Bill Name</label>
+      <input type="text" id="billName" placeholder="e.g. Electricity Bill">
+    </div>
+    <div class="form-group">
+      <label>Amount (₹)</label>
+      <input type="number" id="billAmt" placeholder="1500" min="1">
+    </div>
+    <div class="form-group">
+      <label>Due Day of Month</label>
+      <input type="number" id="billDay" placeholder="15" min="1" max="31">
+    </div>
+    <div class="form-group">
+      <label>Category (optional)</label>
+      <input type="text" id="billCat" placeholder="e.g. Utilities">
+    </div>
+    <button class="btn btn-primary btn-block" onclick="saveBill()">Add Bill</button>
+  </div>
+</div>
+
+<!-- Pay Bill Modal -->
+<div class="modal-overlay" id="payBillModal">
+  <div class="modal">
+    <div class="modal-header">
+      <h3>Mark as Paid</h3>
+      <button class="modal-close" onclick="MM.closeModal('payBillModal')">✕</button>
+    </div>
+    <input type="hidden" id="payBillId">
+    <p style="margin-bottom:1rem;font-size:.9rem;color:var(--muted)">
+      Marking <strong id="payBillName"></strong> as paid.
+      This will also record an expense transaction.
+    </p>
+    <div class="form-group">
+      <label>Payment Date</label>
+      <input type="date" id="payBillDate">
+    </div>
+    <button class="btn btn-success btn-block" onclick="confirmPayBill()">✅ Confirm Payment</button>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+async function load() {
+  const bills = await MM.get('/api/bills');
+
+  const total  = bills.reduce((s, b) => s + b.amount, 0);
+  const paid   = bills.filter(b => b.paid).length;
+  const unpaid = bills.length - paid;
+
+  document.getElementById('totalBills').textContent = MM.fmt(total);
+  document.getElementById('paidCount').textContent  = paid;
+  document.getElementById('unpaidCount').textContent = unpaid;
+
+  const tbody = document.getElementById('billTable');
+  if (!bills.length) {
+    tbody.innerHTML = '<tr><td colspan="6" class="text-center text-muted" style="padding:2rem">No bills yet. Add one above!</td></tr>';
+    return;
+  }
+
+  tbody.innerHTML = bills.map(b => {
+    let statusBadge;
+    if (b.paid) {
+      statusBadge = '<span class="badge badge-income">✅ Paid</span>';
+    } else if (b.days_left < 0) {
+      statusBadge = '<span class="badge badge-expense">⚠️ Overdue</span>';
+    } else if (b.days_left <= 3) {
+      statusBadge = `<span class="badge badge-warning">⏳ Due in ${b.days_left}d</span>`;
+    } else {
+      statusBadge = `<span class="badge badge-neutral">Due day ${b.due_day}</span>`;
+    }
+
+    const payBtn = b.paid
+      ? '<button class="btn btn-ghost btn-xs" disabled>Paid</button>'
+      : `<button class="btn btn-success btn-xs" onclick="openPayBill('${b.id}','${b.name.replace(/'/g,"\\'")}')">💳 Pay</button>`;
+
+    return `
+      <tr>
+        <td><strong>${b.name}</strong></td>
+        <td>${b.category ? `<span class="badge badge-neutral">${b.category}</span>` : '—'}</td>
+        <td>Day ${b.due_day}</td>
+        <td class="text-right font-mono font-bold text-danger">${MM.fmt(b.amount)}</td>
+        <td>${statusBadge}</td>
+        <td style="display:flex;gap:.4rem;align-items:center">
+          ${payBtn}
+          <button class="btn btn-danger btn-xs" onclick="delBill('${b.id}')">✕</button>
+        </td>
+      </tr>
+    `;
+  }).join('');
+}
+
+function openPayBill(id, name) {
+  document.getElementById('payBillId').value       = id;
+  document.getElementById('payBillName').textContent = name;
+  document.getElementById('payBillDate').valueAsDate = new Date();
+  MM.openModal('payBillModal');
+}
+
+async function confirmPayBill() {
+  const id   = document.getElementById('payBillId').value;
+  const date = document.getElementById('payBillDate').value;
+  if (!date) return MM.toast('Select a payment date.', 'error');
+  await MM.post(`/api/bills/${id}/pay`, { date });
+  MM.closeModal('payBillModal');
+  MM.toast('Bill marked as paid! ✅');
+  load();
+}
+
+async function saveBill() {
+  const name = document.getElementById('billName').value.trim();
+  const amt  = parseFloat(document.getElementById('billAmt').value);
+  const day  = parseInt(document.getElementById('billDay').value);
+  if (!name || !amt || !day) return MM.toast('Name, amount and due day are required.', 'error');
+  await MM.post('/api/bills', {
+    name, amount: amt, due_day: day,
+    category: document.getElementById('billCat').value.trim(),
+  });
+  MM.closeModal('billModal');
+  MM.toast('Bill added! ✅');
+  ['billName','billAmt','billDay','billCat'].forEach(id => document.getElementById(id).value = '');
+  load();
+}
+
+async function delBill(id) {
+  if (!confirm('Delete this bill?')) return;
+  await MM.del('/api/bills/' + id);
+  MM.toast('Bill deleted.');
+  load();
+}
+
+load();
+</script>
+{% endblock %}

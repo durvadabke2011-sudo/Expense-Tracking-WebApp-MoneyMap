@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Login – MoneyMap</title>
+  <link rel="stylesheet" href="/static/css/style.css">
+</head>
+<body>
+<div class="auth-wrap">
+
+  <!-- Left panel -->
+  <div class="auth-side">
+    <div class="auth-side-content">
+      <div class="brand">💰 Money<span>Map</span></div>
+      <h2>Take control of your finances</h2>
+      <p>Track income, expenses, budgets, bills, subscriptions, EMIs and investments — all in one place.</p>
+      <ul class="auth-feature-list">
+        <li>Smart dashboard with financial health score</li>
+        <li>Budget tracking with overspend alerts</li>
+        <li>Trip expense management</li>
+        <li>EMI & loan calculator</li>
+        <li>Download PDF & Excel reports</li>
+      </ul>
+    </div>
+  </div>
+
+  <!-- Right panel -->
+  <div class="auth-panel">
+    <div class="auth-form">
+      <div class="auth-logo">💰 Money<span>Map</span></div>
+
+      {% with messages = get_flashed_messages(with_categories=True) %}
+        {% for category, message in messages %}
+          <div class="flash {{ category }}">{{ message }}</div>
+        {% endfor %}
+      {% endwith %}
+
+      <form method="POST" action="/login">
+        <div class="form-group">
+          <label>Email address</label>
+          <input type="email" name="email" placeholder="you@example.com" required autofocus>
+        </div>
+        <div class="form-group">
+          <label>Password</label>
+          <input type="password" name="password" placeholder="••••••••" required>
+        </div>
+        <button type="submit" class="btn btn-primary btn-block" style="margin-top:.5rem">
+          Sign In →
+        </button>
+      </form>
+
+      <p class="auth-link">Don't have an account? <a href="/register">Create one free</a></p>
+    </div>
+  </div>
+
+</div>
+</body>
+</html>

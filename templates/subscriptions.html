@@ -1,0 +1,174 @@
+{% extends "base.html" %}
+{% set active = "subscriptions" %}
+{% block title %}Subscriptions – MoneyMap{% endblock %}
+
+{% block content %}
+<div class="topbar">
+  <div class="topbar-left">
+    <h1>📺 Subscriptions</h1>
+    <p>Track recurring subscriptions and renewals</p>
+  </div>
+  <div class="topbar-actions">
+    <button class="btn btn-primary btn-sm" onclick="MM.openModal('subModal')">+ Add Subscription</button>
+  </div>
+</div>
+
+<div class="stats-grid mb-2">
+  <div class="stat-card expense">
+    <div class="stat-icon">📺</div>
+    <div class="stat-label">Monthly Subscriptions</div>
+    <div class="stat-value num" id="totalSubs">—</div>
+  </div>
+  <div class="stat-card balance">
+    <div class="stat-icon">📅</div>
+    <div class="stat-label">Annual Cost</div>
+    <div class="stat-value num" id="annualCost">—</div>
+  </div>
+</div>
+
+<div class="card">
+  <div class="card-title">Active Subscriptions</div>
+  <div class="table-wrap">
+    <table>
+      <thead><tr>
+        <th>Name</th><th class="text-right">Amount/Month</th>
+        <th>Renewal Day</th><th>Next Renewal</th><th>Status</th><th>Actions</th>
+      </tr></thead>
+      <tbody id="subTable">
+        <tr><td colspan="6" class="text-center text-muted" style="padding:2rem">Loading...</td></tr>
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<!-- Add Subscription Modal -->
+<div class="modal-overlay" id="subModal">
+  <div class="modal">
+    <div class="modal-header">
+      <h3>Add Subscription</h3>
+      <button class="modal-close" onclick="MM.closeModal('subModal')">✕</button>
+    </div>
+    <div class="form-group">
+      <label>Service Name</label>
+      <input type="text" id="subName" placeholder="e.g. Netflix, Spotify">
+    </div>
+    <div class="form-group">
+      <label>Monthly Amount (₹)</label>
+      <input type="number" id="subAmt" placeholder="499" min="1">
+    </div>
+    <div class="form-group">
+      <label>Renewal Day of Month</label>
+      <input type="number" id="subDay" placeholder="1" min="1" max="31">
+    </div>
+    <button class="btn btn-primary btn-block" onclick="saveSub()">Add Subscription</button>
+  </div>
+</div>
+
+<!-- Pay Subscription Modal -->
+<div class="modal-overlay" id="paySubModal">
+  <div class="modal">
+    <div class="modal-header">
+      <h3>Mark as Paid</h3>
+      <button class="modal-close" onclick="MM.closeModal('paySubModal')">✕</button>
+    </div>
+    <input type="hidden" id="paySubId">
+    <p style="margin-bottom:1rem;font-size:.9rem;color:var(--muted)">
+      Paying <strong id="paySubName"></strong> —
+      <span class="font-mono font-bold text-danger" id="paySubAmt"></span>
+    </p>
+    <div class="form-group">
+      <label>Payment Date</label>
+      <input type="date" id="paySubDate">
+    </div>
+    <button class="btn btn-success btn-block" onclick="confirmPaySub()">✅ Confirm Payment</button>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+async function load() {
+  const subs = await MM.get('/api/subscriptions');
+
+  const totalMonthly = subs.reduce((s, sub) => s + sub.amount, 0);
+  document.getElementById('totalSubs').textContent = MM.fmt(totalMonthly);
+  document.getElementById('annualCost').textContent = MM.fmt(totalMonthly * 12);
+
+  const tbody = document.getElementById('subTable');
+  if (!subs.length) {
+    tbody.innerHTML = '<tr><td colspan="6" class="text-center text-muted" style="padding:2rem">No subscriptions yet. Add one above!</td></tr>';
+    return;
+  }
+
+  tbody.innerHTML = subs.map(s => {
+    let statusBadge;
+    if (s.paid) {
+      statusBadge = '<span class="badge badge-income">✅ Paid</span>';
+    } else if (s.days_left === 0) {
+      statusBadge = '<span class="badge badge-expense">🔴 Due Today</span>';
+    } else if (s.days_left <= 3) {
+      statusBadge = `<span class="badge badge-warning">⏳ Due in ${s.days_left}d</span>`;
+    } else {
+      statusBadge = `<span class="badge badge-neutral">Renews in ${s.days_left}d</span>`;
+    }
+
+    const payBtn = s.paid
+      ? '<button class="btn btn-ghost btn-xs" disabled>Paid</button>'
+      : `<button class="btn btn-success btn-xs" onclick="openPaySub('${s.id}','${s.name.replace(/'/g,"\\'")}',${s.amount})">💳 Pay</button>`;
+
+    return `
+      <tr>
+        <td><strong>${s.name}</strong></td>
+        <td class="text-right font-mono font-bold text-danger">${MM.fmt(s.amount)}</td>
+        <td>Day ${s.renewal_day}</td>
+        <td class="text-sm text-muted">${s.next_renewal}</td>
+        <td>${statusBadge}</td>
+        <td style="display:flex;gap:.4rem;align-items:center">
+          ${payBtn}
+          <button class="btn btn-danger btn-xs" onclick="delSub('${s.id}')">✕</button>
+        </td>
+      </tr>
+    `;
+  }).join('');
+}
+
+function openPaySub(id, name, amount) {
+  document.getElementById('paySubId').value         = id;
+  document.getElementById('paySubName').textContent = name;
+  document.getElementById('paySubAmt').textContent  = MM.fmt(amount);
+  document.getElementById('paySubDate').valueAsDate = new Date();
+  MM.openModal('paySubModal');
+}
+
+async function confirmPaySub() {
+  const id   = document.getElementById('paySubId').value;
+  const date = document.getElementById('paySubDate').value;
+  if (!date) return MM.toast('Select a date.', 'error');
+  await MM.post(`/api/subscriptions/${id}/pay`, { date });
+  MM.closeModal('paySubModal');
+  MM.toast('Subscription paid! Expense recorded ✅');
+  load();
+}
+
+async function saveSub() {
+  const name = document.getElementById('subName').value.trim();
+  const amt  = parseFloat(document.getElementById('subAmt').value);
+  const day  = parseInt(document.getElementById('subDay').value);
+  if (!name || !amt || !day) return MM.toast('All fields are required.', 'error');
+  await MM.post('/api/subscriptions', { name, amount: amt, renewal_day: day });
+  MM.closeModal('subModal');
+  MM.toast('Subscription added! ✅');
+  ['subName','subAmt','subDay'].forEach(id => document.getElementById(id).value = '');
+  load();
+}
+
+async function delSub(id) {
+  if (!confirm('Delete this subscription?')) return;
+  await MM.del('/api/subscriptions/' + id);
+  MM.toast('Subscription deleted.');
+  load();
+}
+
+load();
+</script>
+{% endblock %}

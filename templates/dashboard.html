@@ -1,0 +1,225 @@
+{% extends "base.html" %}
+{% set active = "dashboard" %}
+{% block title %}Dashboard – MoneyMap{% endblock %}
+
+{% block content %}
+<div class="topbar">
+  <div class="topbar-left">
+    <h1>🏠 Dashboard</h1>
+    <p id="monthLabel">Loading...</p>
+  </div>
+  <div class="topbar-actions">
+    <!-- Month picker -->
+    <input type="month" id="monthPicker" class="btn btn-ghost"
+           style="font-family:inherit;cursor:pointer;padding:.5rem .9rem;">
+    <!-- Report downloads -->
+    <button class="btn btn-report-pdf btn-sm"
+            onclick="MM.downloadReport('pdf', document.getElementById('monthPicker').value)">
+      📄 PDF
+    </button>
+    <button class="btn btn-report-excel btn-sm"
+            onclick="MM.downloadReport('excel', document.getElementById('monthPicker').value)">
+      📊 Excel
+    </button>
+    <button class="btn btn-primary btn-sm" onclick="MM.openModal('txnModal')">+ Add Transaction</button>
+  </div>
+</div>
+
+<!-- ── Stat cards ──────────────────────────────────────────────── -->
+<div class="stats-grid">
+  <div class="stat-card income">
+    <div class="stat-icon">💚</div>
+    <div class="stat-label">Income</div>
+    <div class="stat-value num" id="stat-income">—</div>
+    <div class="stat-sub">This month</div>
+  </div>
+  <div class="stat-card expense">
+    <div class="stat-icon">❤️</div>
+    <div class="stat-label">Expenses</div>
+    <div class="stat-value num" id="stat-expense">—</div>
+    <div class="stat-sub">This month</div>
+  </div>
+  <div class="stat-card balance">
+    <div class="stat-icon">💎</div>
+    <div class="stat-label">Net Balance</div>
+    <div class="stat-value num" id="stat-balance">—</div>
+    <div class="stat-sub">Income − Expense</div>
+  </div>
+  <div class="stat-card neutral">
+    <div class="stat-icon">❤️‍🔥</div>
+    <div class="stat-label">Health Score</div>
+    <div class="stat-value num" id="stat-score">—</div>
+    <div class="stat-sub">Financial fitness</div>
+  </div>
+</div>
+
+<!-- ── Main grid ───────────────────────────────────────────────── -->
+<div class="grid-2 mb-2">
+
+  <!-- Recent Transactions -->
+  <div class="card">
+    <div class="card-title">Recent Transactions</div>
+    <div class="table-wrap">
+      <table>
+        <thead><tr>
+          <th>Date</th><th>Category</th><th>Note</th><th class="text-right">Amount</th>
+        </tr></thead>
+        <tbody id="recentTxns">
+          <tr><td colspan="4" class="text-center text-muted" style="padding:2rem">Loading...</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- Health score + suggestions -->
+  <div class="card" style="display:flex;flex-direction:column;gap:1rem;">
+    <div class="card-title">Financial Health</div>
+    <div id="scoreRing" style="text-align:center">
+      <div class="score-ring" style="--score:0">
+        <div class="score-inner">
+          <div class="score-num" id="scoreNum">—</div>
+          <div class="score-label">/ 100</div>
+        </div>
+      </div>
+      <p id="scoreGrade" style="font-weight:700;color:var(--primary)">—</p>
+    </div>
+    <div id="suggestions" style="display:flex;flex-direction:column;gap:.5rem;"></div>
+  </div>
+
+</div>
+
+<!-- Add Transaction Modal -->
+<div class="modal-overlay" id="txnModal">
+  <div class="modal">
+    <div class="modal-header">
+      <h3>Add Transaction</h3>
+      <button class="modal-close" onclick="MM.closeModal('txnModal')">✕</button>
+    </div>
+    <div class="form-group">
+      <label>Type</label>
+      <select id="txnType" onchange="loadCategories()">
+        <option value="income">Income</option>
+        <option value="expense">Expense</option>
+      </select>
+    </div>
+    <div class="form-group">
+      <label>Category</label>
+      <select id="txnCat"></select>
+    </div>
+    <div class="form-group">
+      <label>Amount (₹)</label>
+      <input type="number" id="txnAmt" placeholder="0.00" min="0" step="0.01">
+    </div>
+    <div class="form-group">
+      <label>Note</label>
+      <input type="text" id="txnNote" placeholder="Optional description">
+    </div>
+    <div class="form-group">
+      <label>Date</label>
+      <input type="date" id="txnDate">
+    </div>
+    <button class="btn btn-primary btn-block" onclick="saveTxn()">Save Transaction</button>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+const picker = document.getElementById('monthPicker');
+picker.value  = MM.currentMonth();
+
+// Set month label
+function updateLabel(m) {
+  document.getElementById('monthLabel').textContent = MM.monthLabel(m);
+}
+updateLabel(picker.value);
+picker.addEventListener('change', () => { updateLabel(picker.value); load(); });
+
+// Score helpers
+function scoreGrade(n) {
+  if (n >= 80) return { label: 'Excellent 🌟', color: 'var(--success)' };
+  if (n >= 60) return { label: 'Good 👍',      color: 'var(--primary)' };
+  if (n >= 40) return { label: 'Fair ⚠️',      color: 'var(--warning)' };
+  return              { label: 'Needs Work 🚨', color: 'var(--danger)' };
+}
+
+async function load() {
+  const month = picker.value;
+  const data  = await MM.get(`/api/dashboard?month=${month}`);
+
+  // Stats
+  document.getElementById('stat-income').textContent  = MM.fmt(data.income);
+  document.getElementById('stat-expense').textContent = MM.fmt(data.expense);
+  document.getElementById('stat-balance').textContent = MM.fmt(data.balance);
+  document.getElementById('stat-score').textContent   = data.score;
+
+  // Balance colour
+  const bc = document.getElementById('stat-balance');
+  bc.style.color = data.balance >= 0 ? 'var(--success)' : 'var(--danger)';
+
+  // Score ring
+  const ring = document.querySelector('.score-ring');
+  ring.style.setProperty('--score', data.score);
+  document.getElementById('scoreNum').textContent = data.score;
+  const g = scoreGrade(data.score);
+  const gradeEl = document.getElementById('scoreGrade');
+  gradeEl.textContent = g.label;
+  gradeEl.style.color = g.color;
+  ring.style.background =
+    `conic-gradient(${g.color} calc(${data.score} * 3.6deg), #e2e8f0 0)`;
+
+  // Suggestions
+  document.getElementById('suggestions').innerHTML = data.suggestions.map(s =>
+    `<div style="padding:.6rem .9rem;background:var(--primary-light);border-radius:.5rem;font-size:.85rem;color:var(--primary-dark);font-weight:600">${s}</div>`
+  ).join('');
+
+  // Recent transactions
+  const tbody = document.getElementById('recentTxns');
+  if (!data.recent.length) {
+    tbody.innerHTML = '<tr><td colspan="4" class="text-center text-muted" style="padding:2rem">No transactions yet. Add one above!</td></tr>';
+    return;
+  }
+  tbody.innerHTML = data.recent.map(t => `
+    <tr>
+      <td class="text-sm text-muted">${t.date}</td>
+      <td><span class="badge badge-${t.type}">${t.category}</span></td>
+      <td class="text-sm">${t.note || '—'}</td>
+      <td class="text-right font-mono font-bold ${t.type === 'income' ? 'text-success' : 'text-danger'}">
+        ${t.type === 'income' ? '+' : '-'}${MM.fmt(t.amount)}
+      </td>
+    </tr>
+  `).join('');
+}
+
+async function loadCategories() {
+  const type = document.getElementById('txnType').value;
+  const cats = await MM.get('/api/categories');
+  const sel  = document.getElementById('txnCat');
+  sel.innerHTML = cats.filter(c => c.type === type)
+    .map(c => `<option value="${c.id}">${c.name}</option>`).join('');
+}
+
+async function saveTxn() {
+  const amt = parseFloat(document.getElementById('txnAmt').value);
+  const date = document.getElementById('txnDate').value;
+  if (!amt || !date) return MM.toast('Amount and date are required.', 'error');
+  await MM.post('/api/transactions', {
+    type:        document.getElementById('txnType').value,
+    category_id: document.getElementById('txnCat').value,
+    amount:      amt,
+    note:        document.getElementById('txnNote').value,
+    date,
+  });
+  MM.closeModal('txnModal');
+  MM.toast('Transaction added! ✅');
+  document.getElementById('txnAmt').value  = '';
+  document.getElementById('txnNote').value = '';
+  load();
+}
+
+// Initialise
+document.getElementById('txnDate').valueAsDate = new Date();
+loadCategories();
+load();
+</script>
+{% endblock %}

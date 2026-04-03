@@ -1,0 +1,225 @@
+{% extends "base.html" %}
+{% set active = "emi" %}
+{% block title %}EMI Tracker – MoneyMap{% endblock %}
+
+{% block content %}
+<div class="topbar">
+  <div class="topbar-left">
+    <h1>🧮 EMI Tracker</h1>
+    <p>Manage loans, EMIs and repayment schedules</p>
+  </div>
+  <div class="topbar-actions">
+    <button class="btn btn-primary btn-sm" onclick="MM.openModal('loanModal')">+ Add Loan</button>
+  </div>
+</div>
+
+<!-- Stats -->
+<div class="stats-grid mb-2">
+  <div class="stat-card expense">
+    <div class="stat-icon">🏦</div>
+    <div class="stat-label">Total Outstanding</div>
+    <div class="stat-value num" id="totalOutstanding">—</div>
+  </div>
+  <div class="stat-card neutral">
+    <div class="stat-icon">📆</div>
+    <div class="stat-label">Monthly EMI Burden</div>
+    <div class="stat-value num" id="monthlyEmi">—</div>
+  </div>
+</div>
+
+<div id="loanList">
+  <div class="empty-state"><div class="empty-icon">🧮</div><p>Loading...</p></div>
+</div>
+
+<!-- Add Loan Modal -->
+<div class="modal-overlay" id="loanModal">
+  <div class="modal">
+    <div class="modal-header">
+      <h3>Add Loan / EMI</h3>
+      <button class="modal-close" onclick="MM.closeModal('loanModal')">✕</button>
+    </div>
+    <div class="form-group">
+      <label>Loan Name</label>
+      <input type="text" id="loanName" placeholder="e.g. Home Loan, Car Loan">
+    </div>
+    <div class="form-group">
+      <label>Principal Amount (₹)</label>
+      <input type="number" id="loanPrincipal" placeholder="500000" min="1">
+    </div>
+    <div class="form-group">
+      <label>Annual Interest Rate (%)</label>
+      <input type="number" id="loanRate" placeholder="8.5" min="0" step="0.1">
+    </div>
+    <div class="form-group">
+      <label>Tenure (months)</label>
+      <input type="number" id="loanTenure" placeholder="60" min="1">
+    </div>
+
+    <!-- Live EMI preview -->
+    <div id="emiPreview" style="display:none;background:var(--primary-light);border-radius:.5rem;padding:1rem;margin-bottom:1rem;">
+      <div style="font-size:.8rem;color:var(--muted);font-weight:700;text-transform:uppercase;letter-spacing:.5px;margin-bottom:.5rem">EMI Preview</div>
+      <div style="display:flex;gap:1.5rem;flex-wrap:wrap">
+        <div><div class="text-xs text-muted">Monthly EMI</div><div class="font-mono font-bold text-primary" id="previewEmi">—</div></div>
+        <div><div class="text-xs text-muted">Total Interest</div><div class="font-mono font-bold text-danger" id="previewInt">—</div></div>
+        <div><div class="text-xs text-muted">Total Payment</div><div class="font-mono font-bold" id="previewTotal">—</div></div>
+      </div>
+    </div>
+
+    <button class="btn btn-primary btn-block" onclick="saveLoan()">Add Loan</button>
+  </div>
+</div>
+
+<!-- Pay EMI Modal -->
+<div class="modal-overlay" id="payEmiModal">
+  <div class="modal">
+    <div class="modal-header">
+      <h3>Record EMI Payment</h3>
+      <button class="modal-close" onclick="MM.closeModal('payEmiModal')">✕</button>
+    </div>
+    <input type="hidden" id="payLoanId">
+    <p id="payEmiInfo" style="margin-bottom:1rem;font-size:.9rem;color:var(--muted)"></p>
+    <div class="form-group">
+      <label>Payment Amount (₹)</label>
+      <input type="number" id="payEmiAmt" min="1">
+    </div>
+    <div class="form-group">
+      <label>Payment Date</label>
+      <input type="date" id="payEmiDate">
+    </div>
+    <div class="form-group">
+      <label>Note (optional)</label>
+      <input type="text" id="payEmiNote" placeholder="e.g. EMI #3">
+    </div>
+    <button class="btn btn-success btn-block" onclick="confirmPayEmi()">✅ Record Payment</button>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+// Live EMI calculator preview
+['loanPrincipal','loanRate','loanTenure'].forEach(id => {
+  document.getElementById(id).addEventListener('input', updatePreview);
+});
+
+function calcEmi(p, r, n) {
+  if (!p || !n) return { emi: 0, totalInt: 0 };
+  const monthly = r / 1200;
+  if (monthly === 0) return { emi: p/n, totalInt: 0 };
+  const emi = p * monthly * Math.pow(1+monthly, n) / (Math.pow(1+monthly, n) - 1);
+  return { emi, totalInt: emi*n - p };
+}
+
+function updatePreview() {
+  const p = parseFloat(document.getElementById('loanPrincipal').value);
+  const r = parseFloat(document.getElementById('loanRate').value) || 0;
+  const n = parseInt(document.getElementById('loanTenure').value);
+  if (!p || !n) { document.getElementById('emiPreview').style.display = 'none'; return; }
+  const { emi, totalInt } = calcEmi(p, r, n);
+  document.getElementById('emiPreview').style.display = 'block';
+  document.getElementById('previewEmi').textContent   = MM.fmt(emi);
+  document.getElementById('previewInt').textContent   = MM.fmt(totalInt);
+  document.getElementById('previewTotal').textContent = MM.fmt(p + totalInt);
+}
+
+async function load() {
+  const loans = await MM.get('/api/loans');
+  const totalOutstanding = loans.reduce((s, l) => s + (l.principal - l.paid_total), 0);
+  const monthlyEmi       = loans.reduce((s, l) => s + (l.emi || 0), 0);
+  document.getElementById('totalOutstanding').textContent = MM.fmt(Math.max(0, totalOutstanding));
+  document.getElementById('monthlyEmi').textContent = MM.fmt(monthlyEmi);
+
+  const el = document.getElementById('loanList');
+  if (!loans.length) {
+    el.innerHTML = '<div class="empty-state"><div class="empty-icon">🏦</div><p>No loans added yet. Add one to start tracking.</p></div>';
+    return;
+  }
+
+  el.innerHTML = loans.map(l => {
+    const remaining = Math.max(0, l.principal - l.paid_total);
+    const pct       = Math.min(100, Math.round(l.paid_total / l.principal * 100));
+    return `
+      <div class="card mb-2">
+        <div class="flex-between mb-1">
+          <div>
+            <div style="font-size:1.1rem;font-weight:800">🏦 ${l.loan_name}</div>
+            <div class="text-sm text-muted">
+              ${MM.fmt(l.principal)} @ ${l.rate}% for ${l.tenure} months
+            </div>
+          </div>
+          <div style="display:flex;gap:.5rem">
+            <button class="btn btn-success btn-sm" onclick="openPayEmi('${l.id}','${l.loan_name.replace(/'/g,"\\'")}',${l.emi})">💳 Pay EMI</button>
+            <button class="btn btn-danger btn-sm" onclick="delLoan('${l.id}')">✕</button>
+          </div>
+        </div>
+
+        <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:1rem;margin:1rem 0;text-align:center">
+          <div style="padding:.75rem;background:var(--primary-light);border-radius:.5rem">
+            <div class="text-xs text-muted">Monthly EMI</div>
+            <div class="font-mono font-bold text-primary">${MM.fmt(l.emi)}</div>
+          </div>
+          <div style="padding:.75rem;background:var(--success-light);border-radius:.5rem">
+            <div class="text-xs text-muted">Paid So Far</div>
+            <div class="font-mono font-bold text-success">${MM.fmt(l.paid_total)}</div>
+          </div>
+          <div style="padding:.75rem;background:var(--danger-light);border-radius:.5rem">
+            <div class="text-xs text-muted">Remaining</div>
+            <div class="font-mono font-bold text-danger">${MM.fmt(remaining)}</div>
+          </div>
+        </div>
+
+        <div class="progress-bar mb-1">
+          <div class="progress-fill" style="width:${pct}%;background:${pct > 75 ? 'var(--success)' : 'var(--primary)'}"></div>
+        </div>
+        <div class="text-xs text-muted">${pct}% repaid · Total interest: ${MM.fmt(l.total_int)}</div>
+      </div>
+    `;
+  }).join('');
+}
+
+function openPayEmi(id, name, emi) {
+  document.getElementById('payLoanId').value = id;
+  document.getElementById('payEmiInfo').textContent = `Recording payment for: ${name}`;
+  document.getElementById('payEmiAmt').value = emi || '';
+  document.getElementById('payEmiDate').valueAsDate = new Date();
+  MM.openModal('payEmiModal');
+}
+
+async function confirmPayEmi() {
+  const id   = document.getElementById('payLoanId').value;
+  const amt  = parseFloat(document.getElementById('payEmiAmt').value);
+  const date = document.getElementById('payEmiDate').value;
+  if (!amt || !date) return MM.toast('Amount and date are required.', 'error');
+  await MM.post(`/api/loans/${id}/pay`, {
+    amount: amt, date,
+    note: document.getElementById('payEmiNote').value,
+  });
+  MM.closeModal('payEmiModal');
+  MM.toast('EMI payment recorded! ✅');
+  load();
+}
+
+async function saveLoan() {
+  const name      = document.getElementById('loanName').value.trim();
+  const principal = parseFloat(document.getElementById('loanPrincipal').value);
+  const rate      = parseFloat(document.getElementById('loanRate').value) || 0;
+  const tenure    = parseInt(document.getElementById('loanTenure').value);
+  if (!name || !principal || !tenure) return MM.toast('Name, principal and tenure are required.', 'error');
+  await MM.post('/api/loans', { loan_name: name, principal, rate, tenure });
+  MM.closeModal('loanModal');
+  MM.toast('Loan added! ✅');
+  ['loanName','loanPrincipal','loanRate','loanTenure'].forEach(id => document.getElementById(id).value = '');
+  document.getElementById('emiPreview').style.display = 'none';
+  load();
+}
+
+async function delLoan(id) {
+  if (!confirm('Delete this loan and all its payment history?')) return;
+  await MM.del('/api/loans/' + id);
+  MM.toast('Loan deleted.');
+  load();
+}
+
+load();
+</script>
+{% endblock %}
