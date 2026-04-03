@@ -1,9 +1,16 @@
 # MoneyMap – Firebase Edition dependencies
 
+# Build tools (must be first for pkg_resources)
+setuptools>=82.0.1
+wheel>=0.46.3
+
 # Core Flask
 Flask==3.0.0
 Werkzeug==3.0.1
 bcrypt==4.1.2
+
+# Deployment server
+gunicorn==20.1.0
 
 # Firebase
 firebase-admin==6.5.0
@@ -17,10 +24,3 @@ reportlab==4.1.0
 
 # Excel generation
 openpyxl==3.1.2
-
-# Build tools (ensure pkg_resources is available for Gunicorn)
-setuptools>=82.0.1
-wheel>=0.46.3
-
-# Deployment server
-gunicorn==20.1.0
