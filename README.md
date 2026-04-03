@@ -72,11 +72,6 @@ firebase_config/serviceAccountKey.json
 
 ---
 
-## 📸 Screenshots
-
-_Add screenshots of your app here (dashboard, reports, etc.)_
-
----
 
 ## 🎯 Use Case
 
