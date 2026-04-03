@@ -1,11 +1,12 @@
 """
 MoneyMap – Firebase / Firestore Database Helper
-Replaces the old MySQL database.py with Firestore CRUD operations.
+Supports both local (JSON file) and Render (env var JSON string) credential loading.
 """
 import firebase_admin
 from firebase_admin import credentials, firestore
-from config import FIREBASE_CREDENTIALS_PATH
 import uuid
+import json
+import os
 from datetime import datetime
 
 # ── Initialise Firebase Admin SDK (singleton) ──────────────────────
@@ -14,7 +15,15 @@ _app = None
 def _get_app():
     global _app
     if _app is None:
-        cred = credentials.Certificate(FIREBASE_CREDENTIALS_PATH)
+        # On Render: FIREBASE_CREDENTIALS_JSON env var holds the full JSON string
+        env_json = os.environ.get('FIREBASE_CREDENTIALS_JSON')
+        if env_json:
+            cred_dict = json.loads(env_json)
+            cred = credentials.Certificate(cred_dict)
+        else:
+            # Local dev: read from file path in config
+            from config import FIREBASE_CREDENTIALS_PATH
+            cred = credentials.Certificate(FIREBASE_CREDENTIALS_PATH)
         _app = firebase_admin.initialize_app(cred)
     return _app
 
@@ -99,8 +108,8 @@ def delete_doc(collection: str, doc_id: str) -> None:
 
 def delete_docs(collection: str, filters: list[tuple]) -> int:
     """Delete all documents matching *filters*. Returns count deleted."""
-    docs = query_docs(collection, filters=filters)
-    db   = get_db()
+    docs  = query_docs(collection, filters=filters)
+    db    = get_db()
     count = 0
     for d in docs:
         db.collection(collection).document(d["id"]).delete()
