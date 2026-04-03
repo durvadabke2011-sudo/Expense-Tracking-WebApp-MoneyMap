@@ -122,6 +122,16 @@
     return d.toLocaleDateString("en-IN", { month: "long", year: "numeric" });
   }
 
+  // ── Chart colour defaults (theme-aware) ─────────────────────────
+  function chartDefaults() {
+    const dark = document.documentElement.getAttribute("data-theme") === "dark";
+    return {
+      gridColor:   dark ? "rgba(255,255,255,0.08)" : "rgba(0,0,0,0.06)",
+      tickColor:   dark ? "#8b90a8"                : "#64748b",
+      legendColor: dark ? "#e8eaf6"                : "#0f172a",
+    };
+  }
+
   // ── Loading skeleton ─────────────────────────────────────────────
   function showSkeleton(el, lines = 3) {
     if (!el) return;
@@ -145,5 +155,6 @@
       get: themeGet,
       set: themeSet,
     },
+    chartDefaults,
   };
 })();
