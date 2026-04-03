@@ -1,10 +1,11 @@
 """
 MoneyMap – Authentication Blueprint (Firebase Edition)
 Handles register / login / logout using Firestore user documents + bcrypt.
+Added: "Remember Me" via permanent session (30-day cookie).
 """
 from flask import Blueprint, request, session, redirect, url_for, render_template, flash
 import bcrypt
-from datetime import datetime
+from datetime import datetime, timedelta
 from firebase_db import create_doc, query_docs, update_doc, new_id, ts_now
 from config import (COLL_USERS, COLL_CATEGORIES, COLL_PREFERENCES)
 
@@ -33,20 +34,16 @@ def register():
         name     = request.form.get('name', '').strip()
         email    = request.form.get('email', '').strip().lower()
         password = request.form.get('password', '')
-
         if not name or not email or not password:
             flash('All fields are required.', 'error')
             return render_template('register.html')
-
         # Check duplicate email
         existing = query_docs(COLL_USERS, filters=[("email", "==", email)])
         if existing:
             flash('Email already registered. Please login.', 'error')
             return render_template('register.html')
-
         hashed = bcrypt.hashpw(password.encode(), bcrypt.gensalt()).decode()
         uid    = new_id()
-
         create_doc(COLL_USERS, {
             "name":          name,
             "email":         email,
@@ -55,15 +52,12 @@ def register():
             "last_login":    None,
             "last_activity": None,
         }, doc_id=uid)
-
         # Default preferences
         create_doc(COLL_PREFERENCES, {"user_id": uid, "currency": "INR", "theme": "light"})
         # Default categories
         create_default_categories(uid)
-
         flash('Registration successful! Please login.', 'success')
         return redirect(url_for('auth.login'))
-
     return render_template('register.html')
 
 # ── LOGIN ─────────────────────────────────────────────────────────────
@@ -72,16 +66,15 @@ def register():
 def login():
     if 'user_id' in session:
         return redirect(url_for('routes.dashboard'))
-
     if request.method == 'POST':
-        email    = request.form.get('email', '').strip().lower()
-        password = request.form.get('password', '')
+        email       = request.form.get('email', '').strip().lower()
+        password    = request.form.get('password', '')
+        remember_me = request.form.get('remember_me') == 'on'   # ← NEW
 
         rows = query_docs(COLL_USERS, filters=[("email", "==", email)])
         if not rows:
             flash('Email not found. Please register.', 'error')
             return render_template('login.html')
-
         user = rows[0]
         if not bcrypt.checkpw(password.encode(), user['password'].encode()):
             flash('Incorrect password.', 'error')
@@ -90,10 +83,17 @@ def login():
         now = ts_now()
         update_doc(COLL_USERS, user['id'], {"last_login": now, "last_activity": now})
 
+        # ── Remember Me: make the session permanent and set lifetime ──
+        if remember_me:
+            session.permanent = True
+            from flask import current_app
+            current_app.permanent_session_lifetime = timedelta(days=30)
+        else:
+            session.permanent = False   # session expires when browser closes
+
         session['user_id']   = user['id']
         session['user_name'] = user['name']
         return redirect(url_for('routes.dashboard'))
-
     return render_template('login.html')
 
 # ── LOGOUT ────────────────────────────────────────────────────────────

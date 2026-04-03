@@ -1,6 +1,6 @@
 /**
  * MoneyMap – Global JS Utilities (Firebase Edition)
- * Exposes window.MM with fetch helpers, modal control, toast, formatting.
+ * Exposes window.MM with fetch helpers, modal control, toast, formatting, theme.
  */
 (function () {
   "use strict";
@@ -16,7 +16,6 @@
 
   // ── Toast notifications ─────────────────────────────────────────
   let toastContainer = null;
-
   function ensureToastContainer() {
     if (!toastContainer) {
       toastContainer = document.createElement("div");
@@ -24,7 +23,6 @@
       document.body.appendChild(toastContainer);
     }
   }
-
   function toast(message, type = "success", duration = 3500) {
     ensureToastContainer();
     const icons = { success: "✅", error: "❌", warning: "⚠️", info: "ℹ️" };
@@ -47,7 +45,6 @@
     const el = document.getElementById(id);
     if (el) { el.classList.remove("open"); document.body.style.overflow = ""; }
   }
-
   // Close modals on overlay click
   document.addEventListener("click", (e) => {
     if (e.target.classList.contains("modal-overlay")) {
@@ -62,6 +59,25 @@
       });
     }
   });
+
+  // ── Theme (Dark / Light) ────────────────────────────────────────
+  const THEME_KEY = "mm_theme";
+
+  function themeGet() {
+    return localStorage.getItem(THEME_KEY) || "light";
+  }
+
+  function themeSet(theme) {
+    localStorage.setItem(THEME_KEY, theme);
+    if (theme === "dark") {
+      document.documentElement.setAttribute("data-theme", "dark");
+    } else {
+      document.documentElement.removeAttribute("data-theme");
+    }
+  }
+
+  // Apply saved theme immediately on every page load
+  themeSet(themeGet());
 
   // ── Fetch wrappers ──────────────────────────────────────────────
   async function apiFetch(url, options = {}) {
@@ -82,12 +98,11 @@
       throw err;
     }
   }
-
-  const get  = (url)          => apiFetch(url);
-  const post = (url, body)    => apiFetch(url, { method: "POST",   body: JSON.stringify(body) });
-  const put  = (url, body)    => apiFetch(url, { method: "PUT",    body: JSON.stringify(body) });
-  const del  = (url)          => apiFetch(url, { method: "DELETE" });
-  const patch = (url, body)   => apiFetch(url, { method: "PATCH",  body: JSON.stringify(body) });
+  const get   = (url)       => apiFetch(url);
+  const post  = (url, body) => apiFetch(url, { method: "POST",   body: JSON.stringify(body) });
+  const put   = (url, body) => apiFetch(url, { method: "PUT",    body: JSON.stringify(body) });
+  const del   = (url)       => apiFetch(url, { method: "DELETE" });
+  const patch = (url, body) => apiFetch(url, { method: "PATCH",  body: JSON.stringify(body) });
 
   // ── Report download helpers ─────────────────────────────────────
   function downloadReport(type, month) {
@@ -100,7 +115,6 @@
     const d = new Date();
     return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
   }
-
   function monthLabel(m) {
     if (!m) return "";
     const [y, mo] = m.split("-");
@@ -127,5 +141,9 @@
     currentMonth,
     monthLabel,
     showSkeleton,
+    theme: {
+      get: themeGet,
+      set: themeSet,
+    },
   };
 })();
