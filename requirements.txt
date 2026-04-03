@@ -18,7 +18,9 @@ reportlab==4.1.0
 # Excel generation
 openpyxl==3.1.2
 
-# Deployment essentials
+# Build tools (ensure pkg_resources is available for Gunicorn)
 setuptools>=82.0.1
 wheel>=0.46.3
+
+# Deployment server
 gunicorn==20.1.0
