@@ -126,17 +126,17 @@ def api_dashboard():
         })
 
     # Financial health score
-    score   = _health_score(income, expense, txns)
+    score       = _health_score(income, expense, txns)
     suggestions = _suggestions(income, expense)
 
     return jsonify({
-        'income':   income,
-        'expense':  expense,
-        'balance':  balance,
-        'recent':   recent,
-        'score':    score,
+        'income':      income,
+        'expense':     expense,
+        'balance':     balance,
+        'recent':      recent,
+        'score':       score,
         'suggestions': suggestions,
-        'month':    month,
+        'month':       month,
     })
 
 def _health_score(income, expense, all_txns):
@@ -144,7 +144,7 @@ def _health_score(income, expense, all_txns):
         return 30
     ratio = expense / income
     score = 100
-    if ratio > 0.9:  score -= 40
+    if ratio > 0.9:   score -= 40
     elif ratio > 0.7: score -= 20
     elif ratio > 0.5: score -= 10
     return max(10, min(100, int(score)))
@@ -182,12 +182,12 @@ def api_get_transactions():
         if not t.get('date', '').startswith(month):
             continue
         result.append({
-            'id':       t['id'],
-            'type':     t['type'],
-            'amount':   t['amount'],
-            'note':     t.get('note', ''),
-            'date':     t['date'],
-            'category': cat_map.get(t.get('category_id', ''), 'Uncategorised'),
+            'id':          t['id'],
+            'type':        t['type'],
+            'amount':      t['amount'],
+            'note':        t.get('note', ''),
+            'date':        t['date'],
+            'category':    cat_map.get(t.get('category_id', ''), 'Uncategorised'),
             'category_id': t.get('category_id', ''),
         })
     result.sort(key=lambda x: x['date'], reverse=True)
@@ -196,7 +196,7 @@ def api_get_transactions():
 @routes_bp.route('/api/transactions', methods=['POST'])
 @login_required
 def api_add_transaction():
-    data = request.json
+    data   = request.json
     doc_id = create_doc(COLL_TRANSACTIONS, {
         'user_id':     uid(),
         'category_id': data.get('category_id', ''),
@@ -226,7 +226,7 @@ def api_get_categories():
 @routes_bp.route('/api/categories', methods=['POST'])
 @login_required
 def api_add_category():
-    data = request.json
+    data   = request.json
     doc_id = create_doc(COLL_CATEGORIES, {
         'user_id': uid(),
         'name':    data['name'],
@@ -265,19 +265,19 @@ def api_get_budgets():
             and t.get('date', '').startswith(month)
         )
         result.append({
-            'id':       b['id'],
-            'category': cat_map.get(b.get('category_id', ''), 'Unknown'),
+            'id':          b['id'],
+            'category':    cat_map.get(b.get('category_id', ''), 'Unknown'),
             'category_id': b.get('category_id', ''),
-            'amount':   b['amount'],
-            'spent':    spent,
-            'month':    b['month'],
+            'amount':      b['amount'],
+            'spent':       spent,
+            'month':       b['month'],
         })
     return jsonify(result)
 
 @routes_bp.route('/api/budgets', methods=['POST'])
 @login_required
 def api_add_budget():
-    data = request.json
+    data   = request.json
     doc_id = create_doc(COLL_BUDGETS, {
         'user_id':     uid(),
         'category_id': data.get('category_id', ''),
@@ -304,7 +304,7 @@ def api_get_accounts():
 @routes_bp.route('/api/accounts', methods=['POST'])
 @login_required
 def api_add_account():
-    data = request.json
+    data   = request.json
     doc_id = create_doc(COLL_ACCOUNTS, {
         'user_id': uid(),
         'name':    data['name'],
@@ -334,18 +334,18 @@ def api_get_bills():
     ])
     paid_ids = {p['bill_id'] for p in paid}
 
-    today = date.today()
+    today  = date.today()
     result = []
     for b in bills:
-        due_day  = b.get('due_day', 1)
+        due_day   = b.get('due_day', 1)
         days_left = due_day - today.day
         result.append({
-            'id':       b['id'],
-            'name':     b['name'],
-            'amount':   b['amount'],
-            'due_day':  due_day,
-            'category': b.get('category', ''),
-            'paid':     b['id'] in paid_ids,
+            'id':        b['id'],
+            'name':      b['name'],
+            'amount':    b['amount'],
+            'due_day':   due_day,
+            'category':  b.get('category', ''),
+            'paid':      b['id'] in paid_ids,
             'days_left': days_left,
         })
     return jsonify(result)
@@ -353,7 +353,7 @@ def api_get_bills():
 @routes_bp.route('/api/bills', methods=['POST'])
 @login_required
 def api_add_bill():
-    data = request.json
+    data   = request.json
     doc_id = create_doc(COLL_BILLS, {
         'user_id':  uid(),
         'name':     data['name'],
@@ -374,7 +374,6 @@ def api_pay_bill(bill_id):
         'paid_month': month,
         'paid_date':  data.get('date', today_str()),
     })
-    # Also record as expense transaction
     bill = get_doc(COLL_BILLS, bill_id)
     if bill:
         create_doc(COLL_TRANSACTIONS, {
@@ -413,12 +412,12 @@ def api_get_subscriptions():
 
     result = []
     for s in subs:
-        day = s.get('renewal_day', 1)
-        day = min(day, last)
+        day     = s.get('renewal_day', 1)
+        day     = min(day, last)
         renewal = date(yr, mo, day)
         if renewal < today:
-            mo2  = mo + 1 if mo < 12 else 1
-            yr2  = yr if mo < 12 else yr + 1
+            mo2   = mo + 1 if mo < 12 else 1
+            yr2   = yr if mo < 12 else yr + 1
             _, l2 = calendar.monthrange(yr2, mo2)
             renewal = date(yr2, mo2, min(s['renewal_day'], l2))
         days_left = (renewal - today).days
@@ -436,7 +435,7 @@ def api_get_subscriptions():
 @routes_bp.route('/api/subscriptions', methods=['POST'])
 @login_required
 def api_add_subscription():
-    data = request.json
+    data   = request.json
     doc_id = create_doc(COLL_SUBSCRIPTIONS, {
         'user_id':     uid(),
         'name':        data['name'],
@@ -480,18 +479,18 @@ def api_delete_subscription(sub_id):
 @routes_bp.route('/api/trips', methods=['GET'])
 @login_required
 def api_get_trips():
-    trips = query_docs(COLL_TRIPS, filters=[("user_id", "==", uid())])
+    trips  = query_docs(COLL_TRIPS, filters=[("user_id", "==", uid())])
     result = []
     for t in trips:
         expenses = query_docs(COLL_TRIP_EXPENSES, filters=[("trip_id", "==", t['id'])])
-        spent = sum(e['amount'] for e in expenses)
+        spent    = sum(e['amount'] for e in expenses)
         result.append({**t, 'spent': spent, 'expenses': expenses})
     return jsonify(result)
 
 @routes_bp.route('/api/trips', methods=['POST'])
 @login_required
 def api_add_trip():
-    data = request.json
+    data   = request.json
     doc_id = create_doc(COLL_TRIPS, {
         'user_id':     uid(),
         'destination': data['destination'],
@@ -504,7 +503,7 @@ def api_add_trip():
 @routes_bp.route('/api/trips/<trip_id>/expenses', methods=['POST'])
 @login_required
 def api_add_trip_expense(trip_id):
-    data = request.json
+    data   = request.json
     doc_id = create_doc(COLL_TRIP_EXPENSES, {
         'trip_id': trip_id,
         'note':    data.get('note', ''),
@@ -527,10 +526,10 @@ def api_delete_trip(trip_id):
 @routes_bp.route('/api/loans', methods=['GET'])
 @login_required
 def api_get_loans():
-    loans = query_docs(COLL_LOANS, filters=[("user_id", "==", uid())])
+    loans  = query_docs(COLL_LOANS, filters=[("user_id", "==", uid())])
     result = []
     for l in loans:
-        payments = query_docs(COLL_EMI_PAYMENTS, filters=[("loan_id", "==", l['id'])])
+        payments   = query_docs(COLL_EMI_PAYMENTS, filters=[("loan_id", "==", l['id'])])
         paid_total = sum(p['amount'] for p in payments)
         result.append({**l, 'paid_total': paid_total, 'payments': payments})
     return jsonify(result)
@@ -538,7 +537,7 @@ def api_get_loans():
 @routes_bp.route('/api/loans', methods=['POST'])
 @login_required
 def api_add_loan():
-    data = request.json
+    data      = request.json
     principal = float(data['principal'])
     rate      = float(data['rate'])
     tenure    = int(data['tenure'])
@@ -548,7 +547,7 @@ def api_add_loan():
     else:
         emi = principal / tenure
     total_int = emi * tenure - principal
-    doc_id = create_doc(COLL_LOANS, {
+    doc_id    = create_doc(COLL_LOANS, {
         'user_id':   uid(),
         'loan_name': data.get('loan_name', 'My Loan'),
         'principal': principal,
@@ -562,7 +561,7 @@ def api_add_loan():
 @routes_bp.route('/api/loans/<loan_id>/pay', methods=['POST'])
 @login_required
 def api_pay_emi(loan_id):
-    data = request.json
+    data   = request.json
     doc_id = create_doc(COLL_EMI_PAYMENTS, {
         'loan_id':   loan_id,
         'amount':    float(data['amount']),
@@ -599,7 +598,7 @@ def api_get_investments():
 @routes_bp.route('/api/investments', methods=['POST'])
 @login_required
 def api_add_investment():
-    data = request.json
+    data   = request.json
     doc_id = create_doc(COLL_INVESTMENTS, {
         'user_id':     uid(),
         'name':        data['name'],
@@ -618,20 +617,22 @@ def api_delete_investment(inv_id):
     return jsonify({'ok': True})
 
 # ═══════════════════════════════════════════════════════════════════════
-# API – ANALYSIS
+# API – ANALYSIS  (4 essential charts only)
 # ═══════════════════════════════════════════════════════════════════════
 
 @routes_bp.route('/api/analysis')
 @login_required
 def api_analysis():
-    txns = query_docs(COLL_TRANSACTIONS, filters=[("user_id", "==", uid())])
-    cats = query_docs(COLL_CATEGORIES,   filters=[("user_id", "==", uid())])
+    txns    = query_docs(COLL_TRANSACTIONS, filters=[("user_id", "==", uid())])
+    cats    = query_docs(COLL_CATEGORIES,   filters=[("user_id", "==", uid())])
     cat_map = {c['id']: c['name'] for c in cats}
 
-    # Monthly summary – last 6 months
+    # ── 1. Monthly Income vs Expense (last 6 months) ──────────────────
     monthly = {}
     for t in txns:
         m = t.get('date', '')[:7]
+        if not m:
+            continue
         if m not in monthly:
             monthly[m] = {'income': 0, 'expense': 0}
         monthly[m][t['type']] = monthly[m].get(t['type'], 0) + t['amount']
@@ -639,19 +640,49 @@ def api_analysis():
     months_sorted = sorted(monthly.keys())[-6:]
     monthly_data  = {m: monthly[m] for m in months_sorted}
 
-    # Category breakdown – current month
-    cm = current_month()
-    cat_breakdown = {}
+    # ── 2. Expense by Category (all-time) ────────────────────────────
+    exp_breakdown = {}
     for t in txns:
-        if t.get('date', '').startswith(cm) and t['type'] == 'expense':
+        if t['type'] == 'expense':
             cat = cat_map.get(t.get('category_id', ''), 'Other')
-            cat_breakdown[cat] = cat_breakdown.get(cat, 0) + t['amount']
+            exp_breakdown[cat] = exp_breakdown.get(cat, 0) + t['amount']
+
+    # ── 3. Budget vs Spent (current month) ───────────────────────────
+    cm      = current_month()
+    budgets = query_docs(COLL_BUDGETS, filters=[
+        ("user_id", "==", uid()),
+        ("month",   "==", cm),
+    ])
+    budget_categories = []
+    budget_values     = []
+    budget_spent      = []
+    for b in budgets:
+        spent = sum(
+            t['amount'] for t in txns
+            if t['type'] == 'expense'
+            and t.get('category_id') == b.get('category_id')
+            and t.get('date', '').startswith(cm)
+        )
+        budget_categories.append(cat_map.get(b.get('category_id', ''), 'Unknown'))
+        budget_values.append(b['amount'])
+        budget_spent.append(spent)
 
     return jsonify({
-        'monthly':       monthly_data,
-        'cat_breakdown': cat_breakdown,
+        # Totals (for stat cards)
         'total_income':  sum(t['amount'] for t in txns if t['type'] == 'income'),
         'total_expense': sum(t['amount'] for t in txns if t['type'] == 'expense'),
+
+        # Chart 1 – Monthly bar + Chart 3 – Savings line (same data)
+        'monthly': monthly_data,
+
+        # Chart 2 – Expense doughnut
+        'expense_categories': list(exp_breakdown.keys()),
+        'expense_values':     list(exp_breakdown.values()),
+
+        # Chart 4 – Budget vs Spent
+        'budget_categories': budget_categories,
+        'budget_values':     budget_values,
+        'budget_spent':      budget_spent,
     })
 
 # ═══════════════════════════════════════════════════════════════════════

@@ -6,7 +6,7 @@
 <div class="topbar">
   <div class="topbar-left">
     <h1>📊 Analysis</h1>
-    <p>Full visual breakdown of your finances</p>
+    <p>Visual breakdown of your finances</p>
   </div>
   <div class="topbar-actions">
     <button class="btn btn-report-pdf btn-sm"
@@ -16,7 +16,7 @@
   </div>
 </div>
 
-<!-- Summary stats -->
+<!-- Summary Stats -->
 <div class="stats-grid mb-2">
   <div class="stat-card income">
     <div class="stat-icon">💚</div>
@@ -35,7 +35,7 @@
   </div>
 </div>
 
-<!-- Row 1: Bar + Savings line -->
+<!-- Chart 1: Monthly Income vs Expense (full width) -->
 <div class="card mb-2">
   <div class="card-title">📅 Monthly Income vs Expense (Last 6 Months)</div>
   <div class="chart-container" style="height:300px">
@@ -43,108 +43,53 @@
   </div>
 </div>
 
-<!-- Row 2: Income pie + Expense pie -->
+<!-- Chart 2 & 3: Expense by Category + Savings Trend -->
 <div class="grid-2 mb-2">
   <div class="card">
-    <div class="card-title">💚 Income by Category</div>
-    <div class="chart-container" style="height:260px">
-      <canvas id="incomeChart"></canvas>
-    </div>
-  </div>
-  <div class="card">
     <div class="card-title">❤️ Expense by Category</div>
-    <div class="chart-container" style="height:260px">
+    <div class="chart-container" style="height:280px">
       <canvas id="expenseChart"></canvas>
     </div>
   </div>
-</div>
-
-<!-- Row 3: Accounts + Investments -->
-<div class="grid-2 mb-2">
-  <div class="card">
-    <div class="card-title">🧾 Account Balance Distribution</div>
-    <div class="chart-container" style="height:240px">
-      <canvas id="accountChart"></canvas>
-    </div>
-  </div>
-  <div class="card">
-    <div class="card-title">📈 Investment Portfolio by Type</div>
-    <div class="chart-container" style="height:240px">
-      <canvas id="investmentChart"></canvas>
-    </div>
-  </div>
-</div>
-
-<!-- Row 4: Bills + Subscriptions -->
-<div class="grid-2 mb-2">
-  <div class="card">
-    <div class="card-title">🔔 Top Bills (Monthly Amount)</div>
-    <div class="chart-container" style="height:240px">
-      <canvas id="billsChart"></canvas>
-    </div>
-  </div>
-  <div class="card">
-    <div class="card-title">📺 Subscription Costs</div>
-    <div class="chart-container" style="height:240px">
-      <canvas id="subscriptionsChart"></canvas>
-    </div>
-  </div>
-</div>
-
-<!-- Row 5: Trips + Budgets -->
-<div class="grid-2 mb-2">
-  <div class="card">
-    <div class="card-title">✈️ Trip Expenses</div>
-    <div class="chart-container" style="height:230px">
-      <canvas id="tripsChart"></canvas>
-    </div>
-  </div>
-  <div class="card">
-    <div class="card-title">💰 Budget vs Plan</div>
-    <div class="chart-container" style="height:230px">
-      <canvas id="budgetChart"></canvas>
-    </div>
-  </div>
-</div>
-
-<!-- Row 6: Loan breakdown (full width) -->
-<div class="card mb-2">
-  <div class="card-title">🏦 Loan Breakdown (Principal + Interest)</div>
-  <div class="chart-container" style="height:200px">
-    <canvas id="loanChart"></canvas>
-  </div>
-</div>
-
-<!-- Row 7: Savings trend + Summary table -->
-<div class="grid-2 mb-2">
   <div class="card">
     <div class="card-title">📉 Monthly Savings Trend</div>
-    <div class="chart-container" style="height:240px">
+    <div class="chart-container" style="height:280px">
       <canvas id="savingsChart"></canvas>
     </div>
   </div>
-  <div class="card">
-    <div class="card-title">📋 Monthly Summary Table</div>
-    <div class="table-wrap">
-      <table>
-        <thead><tr>
+</div>
+
+<!-- Chart 4: Budget vs Spent (full width) -->
+<div class="card mb-2">
+  <div class="card-title">💰 Budget vs Spent (This Month)</div>
+  <div class="chart-container" style="height:260px">
+    <canvas id="budgetChart"></canvas>
+  </div>
+</div>
+
+<!-- Monthly Summary Table -->
+<div class="card mb-2">
+  <div class="card-title">📋 Monthly Summary Table</div>
+  <div class="table-wrap">
+    <table>
+      <thead>
+        <tr>
           <th>Month</th>
           <th class="text-right">Income</th>
           <th class="text-right">Expense</th>
           <th class="text-right">Savings</th>
-        </tr></thead>
-        <tbody id="summaryTable">
-          <tr><td colspan="4" class="text-center text-muted" style="padding:2rem">Loading...</td></tr>
-        </tbody>
-      </table>
-    </div>
+        </tr>
+      </thead>
+      <tbody id="summaryTable">
+        <tr><td colspan="4" class="text-center text-muted" style="padding:2rem">Loading...</td></tr>
+      </tbody>
+    </table>
   </div>
 </div>
 {% endblock %}
 
 {% block scripts %}
 <script>
-// 20 visually distinct colours — works well in both light and dark modes
 const PALETTE = [
   '#0d9488','#6366f1','#f59e0b','#ef4444','#06b6d4',
   '#8b5cf6','#10b981','#f43f5e','#84cc16','#fb923c',
@@ -160,10 +105,11 @@ function noData(canvasId, msg) {
   const canvas  = document.getElementById(canvasId);
   const wrapper = canvas?.parentElement;
   if (!wrapper) return;
-  wrapper.innerHTML = `<div class="empty-state" style="height:100%;display:flex;flex-direction:column;align-items:center;justify-content:center;">
-    <div class="empty-icon" style="font-size:2rem;opacity:.3;margin-bottom:.5rem">📭</div>
-    <p class="text-xs text-muted">${msg || 'No data yet'}</p>
-  </div>`;
+  wrapper.innerHTML = `
+    <div class="empty-state" style="height:100%;display:flex;flex-direction:column;align-items:center;justify-content:center;">
+      <div style="font-size:2rem;opacity:.3;margin-bottom:.5rem">📭</div>
+      <p class="text-xs text-muted">${msg || 'No data yet'}</p>
+    </div>`;
 }
 
 function makeChart(id, config) {
@@ -171,7 +117,6 @@ function makeChart(id, config) {
   if (!el) return;
   const { gridColor, tickColor, legendColor } = MM.chartDefaults();
 
-  // Inject default tick/grid colours into scales
   if (config.options?.scales) {
     Object.values(config.options.scales).forEach(scale => {
       if (!scale.ticks) scale.ticks = {};
@@ -191,14 +136,15 @@ function makeChart(id, config) {
 async function loadAnalysis() {
   const data = await MM.get('/api/analysis');
 
-  // ── Totals ───────────────────────────────────────────────────────
+  // ── Totals ─────────────────────────────────────────────────────────
   document.getElementById('totalIncome').textContent  = MM.fmt(data.total_income  || 0);
   document.getElementById('totalExpense').textContent = MM.fmt(data.total_expense || 0);
-  const net = (data.total_income || 0) - (data.total_expense || 0);
+  const net   = (data.total_income || 0) - (data.total_expense || 0);
   const netEl = document.getElementById('netSavings');
-  netEl.textContent = MM.fmt(net);
-  netEl.style.color = net >= 0 ? 'var(--success)' : 'var(--danger)';
+  netEl.textContent  = MM.fmt(net);
+  netEl.style.color  = net >= 0 ? 'var(--success)' : 'var(--danger)';
 
+  // ── Prepare monthly data ───────────────────────────────────────────
   const months   = Object.keys(data.monthly || {}).sort().slice(-6);
   const incomes  = months.map(m => data.monthly[m]?.income  || 0);
   const expenses = months.map(m => data.monthly[m]?.expense || 0);
@@ -208,165 +154,78 @@ async function loadAnalysis() {
     return new Date(y, mo - 1).toLocaleDateString('en-IN', { month: 'short', year: '2-digit' });
   });
 
-  // ── 1. Monthly Bar chart ─────────────────────────────────────────
+  // ── Chart 1: Monthly Income vs Expense bar ─────────────────────────
   if (months.length) {
     makeChart('barChart', {
       type: 'bar',
       data: {
         labels,
         datasets: [
-          { label: 'Income',  data: incomes,  backgroundColor: 'rgba(16,185,129,.8)',  borderRadius: 6, borderSkipped: false },
-          { label: 'Expense', data: expenses, backgroundColor: 'rgba(220,38,38,.75)',  borderRadius: 6, borderSkipped: false },
+          {
+            label: 'Income',
+            data: incomes,
+            backgroundColor: 'rgba(16,185,129,.8)',
+            borderRadius: 6,
+            borderSkipped: false,
+          },
+          {
+            label: 'Expense',
+            data: expenses,
+            backgroundColor: 'rgba(220,38,38,.75)',
+            borderRadius: 6,
+            borderSkipped: false,
+          },
         ],
       },
       options: {
-        responsive: true, maintainAspectRatio: false,
+        responsive: true,
+        maintainAspectRatio: false,
         plugins: { legend: { position: 'top' } },
         scales: {
-          y: { beginAtZero: true, ticks: { callback: v => '₹' + (v/1000).toFixed(0) + 'k' } },
+          y: { beginAtZero: true, ticks: { callback: v => '₹' + (v / 1000).toFixed(0) + 'k' } },
           x: { grid: { display: false } },
         },
       },
     });
-  } else { noData('barChart', 'No transactions yet'); }
+  } else {
+    noData('barChart', 'No transactions yet');
+  }
 
-  // ── 2. Income by category doughnut ──────────────────────────────
-  const incCats = data.income_categories || [];
-  const incVals = data.income_values     || [];
-  if (incCats.length) {
-    makeChart('incomeChart', {
-      type: 'doughnut',
-      data: { labels: incCats, datasets: [{ data: incVals, backgroundColor: clr(incCats.length, 0), borderWidth: 2, borderColor: 'transparent' }] },
-      options: { responsive: true, maintainAspectRatio: false, cutout: '60%',
-        plugins: { legend: { position: 'bottom', labels: { font: { size: 11 }, boxWidth: 12, padding: 10 } },
-          tooltip: { callbacks: { label: ctx => ` ${ctx.label}: ${MM.fmt(ctx.raw)}` } } } },
-    });
-  } else { noData('incomeChart', 'No income transactions'); }
-
-  // ── 3. Expense by category doughnut ─────────────────────────────
+  // ── Chart 2: Expense by Category doughnut ─────────────────────────
   const expCats = data.expense_categories || [];
   const expVals = data.expense_values     || [];
   if (expCats.length) {
     makeChart('expenseChart', {
       type: 'doughnut',
-      data: { labels: expCats, datasets: [{ data: expVals, backgroundColor: clr(expCats.length, 5), borderWidth: 2, borderColor: 'transparent' }] },
-      options: { responsive: true, maintainAspectRatio: false, cutout: '60%',
-        plugins: { legend: { position: 'bottom', labels: { font: { size: 11 }, boxWidth: 12, padding: 10 } },
-          tooltip: { callbacks: { label: ctx => ` ${ctx.label}: ${MM.fmt(ctx.raw)}` } } } },
-    });
-  } else { noData('expenseChart', 'No expense transactions'); }
-
-  // ── 4. Account balance pie ───────────────────────────────────────
-  const accTypes = data.account_types  || [];
-  const accVals  = data.account_values || [];
-  if (accTypes.length) {
-    makeChart('accountChart', {
-      type: 'doughnut',
-      data: { labels: accTypes, datasets: [{ data: accVals, backgroundColor: clr(accTypes.length, 2), borderWidth: 2, borderColor: 'transparent' }] },
-      options: { responsive: true, maintainAspectRatio: false, cutout: '55%',
-        plugins: { legend: { position: 'bottom', labels: { font: { size: 11 }, boxWidth: 12 } },
-          tooltip: { callbacks: { label: ctx => ` ${ctx.label}: ${MM.fmt(ctx.raw)}` } } } },
-    });
-  } else { noData('accountChart', 'No accounts added'); }
-
-  // ── 5. Investment portfolio doughnut ─────────────────────────────
-  const invTypes  = data.inv_types  || [];
-  const invVals   = data.inv_values || [];
-  const invCounts = data.inv_counts || [];
-  if (invTypes.length) {
-    makeChart('investmentChart', {
-      type: 'doughnut',
       data: {
-        labels: invTypes.map((t, i) => `${t} (${invCounts[i]})`),
-        datasets: [{ data: invVals, backgroundColor: clr(invTypes.length, 7), borderWidth: 2, borderColor: 'transparent' }]
+        labels: expCats,
+        datasets: [{
+          data: expVals,
+          backgroundColor: clr(expCats.length, 5),
+          borderWidth: 2,
+          borderColor: 'transparent',
+        }],
       },
-      options: { responsive: true, maintainAspectRatio: false, cutout: '55%',
-        plugins: { legend: { position: 'bottom', labels: { font: { size: 11 }, boxWidth: 12 } },
-          tooltip: { callbacks: { label: ctx => ` ${ctx.label}: ${MM.fmt(ctx.raw)}` } } } },
-    });
-  } else { noData('investmentChart', 'No investments added'); }
-
-  // ── 6. Bills horizontal bar ──────────────────────────────────────
-  const billCats = data.bill_categories || [];
-  const billVals = data.bill_values     || [];
-  if (billCats.length) {
-    makeChart('billsChart', {
-      type: 'bar',
-      data: { labels: billCats, datasets: [{ label: 'Amount (₹)', data: billVals, backgroundColor: clr(billCats.length, 1), borderRadius: 4 }] },
-      options: { indexAxis: 'y', responsive: true, maintainAspectRatio: false,
-        plugins: { legend: { display: false } },
-        scales: { x: { beginAtZero: true, ticks: { callback: v => '₹' + v.toLocaleString('en-IN') } }, y: { grid: { display: false } } } },
-    });
-  } else { noData('billsChart', 'No bills added'); }
-
-  // ── 7. Subscriptions horizontal bar ─────────────────────────────
-  const subNames = data.subscription_names  || [];
-  const subVals  = data.subscription_values || [];
-  if (subNames.length) {
-    makeChart('subscriptionsChart', {
-      type: 'bar',
-      data: { labels: subNames, datasets: [{ label: 'Monthly Cost (₹)', data: subVals, backgroundColor: clr(subNames.length, 4), borderRadius: 4 }] },
-      options: { indexAxis: 'y', responsive: true, maintainAspectRatio: false,
-        plugins: { legend: { display: false } },
-        scales: { x: { beginAtZero: true, ticks: { callback: v => '₹' + v.toLocaleString('en-IN') } }, y: { grid: { display: false } } } },
-    });
-  } else { noData('subscriptionsChart', 'No subscriptions added'); }
-
-  // ── 8. Trips horizontal bar ──────────────────────────────────────
-  const tripNames = data.trip_names  || [];
-  const tripVals  = data.trip_values || [];
-  if (tripNames.length) {
-    makeChart('tripsChart', {
-      type: 'bar',
-      data: { labels: tripNames, datasets: [{ label: 'Spent (₹)', data: tripVals, backgroundColor: clr(tripNames.length, 9), borderRadius: 4 }] },
-      options: { indexAxis: 'y', responsive: true, maintainAspectRatio: false,
-        plugins: { legend: { display: false } },
-        scales: { x: { beginAtZero: true, ticks: { callback: v => '₹' + v.toLocaleString('en-IN') } }, y: { grid: { display: false } } } },
-    });
-  } else { noData('tripsChart', 'No trips added'); }
-
-  // ── 9. Budget horizontal bar ─────────────────────────────────────
-  const budCats = data.budget_categories || [];
-  const budVals = data.budget_values     || [];
-  const budSpent = data.budget_spent     || [];
-  if (budCats.length) {
-    makeChart('budgetChart', {
-      type: 'bar',
-      data: {
-        labels: budCats,
-        datasets: [
-          { label: 'Budget',  data: budVals,  backgroundColor: 'rgba(13,148,136,.7)', borderRadius: 4 },
-          { label: 'Spent',   data: budSpent, backgroundColor: 'rgba(220,38,38,.7)',  borderRadius: 4 },
-        ]
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        cutout: '60%',
+        plugins: {
+          legend: {
+            position: 'bottom',
+            labels: { font: { size: 11 }, boxWidth: 12, padding: 10 },
+          },
+          tooltip: {
+            callbacks: { label: ctx => ` ${ctx.label}: ${MM.fmt(ctx.raw)}` },
+          },
+        },
       },
-      options: { indexAxis: 'y', responsive: true, maintainAspectRatio: false,
-        plugins: { legend: { position: 'top' } },
-        scales: { x: { beginAtZero: true, ticks: { callback: v => '₹' + v.toLocaleString('en-IN') } }, y: { grid: { display: false } } } },
     });
-  } else { noData('budgetChart', 'No budgets set'); }
+  } else {
+    noData('expenseChart', 'No expense transactions');
+  }
 
-  // ── 10. Loan stacked bar ─────────────────────────────────────────
-  const loanNames    = data.loan_names      || [];
-  const loanPrincipals = data.loan_principals || [];
-  const loanInterests  = data.loan_interests  || [];
-  if (loanNames.length) {
-    makeChart('loanChart', {
-      type: 'bar',
-      data: {
-        labels: loanNames,
-        datasets: [
-          { label: 'Principal', data: loanPrincipals, backgroundColor: 'rgba(99,102,241,.8)', borderRadius: 4 },
-          { label: 'Interest',  data: loanInterests,  backgroundColor: 'rgba(220,38,38,.75)', borderRadius: 4 },
-        ]
-      },
-      options: { indexAxis: 'y', responsive: true, maintainAspectRatio: false,
-        plugins: { legend: { position: 'top' } },
-        scales: { x: { stacked: true, beginAtZero: true, ticks: { callback: v => '₹' + (v/1000).toFixed(0) + 'k' } },
-                  y: { stacked: true, grid: { display: false } } } },
-    });
-  } else { noData('loanChart', 'No loans added'); }
-
-  // ── 11. Savings line chart ────────────────────────────────────────
+  // ── Chart 3: Savings Trend line ────────────────────────────────────
   if (months.length) {
     makeChart('savingsChart', {
       type: 'line',
@@ -377,23 +236,74 @@ async function loadAnalysis() {
           data: savings,
           borderColor: '#0d9488',
           backgroundColor: 'rgba(13,148,136,.12)',
-          fill: true, tension: 0.4, pointRadius: 5,
-          pointBackgroundColor: '#0d9488', pointBorderColor: '#fff', pointBorderWidth: 2,
-        }]
+          fill: true,
+          tension: 0.4,
+          pointRadius: 5,
+          pointBackgroundColor: '#0d9488',
+          pointBorderColor: '#fff',
+          pointBorderWidth: 2,
+        }],
       },
       options: {
-        responsive: true, maintainAspectRatio: false,
-        plugins: { legend: { display: false },
-          tooltip: { callbacks: { label: ctx => ` Savings: ${MM.fmt(ctx.raw)}` } } },
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: {
+          legend: { display: false },
+          tooltip: { callbacks: { label: ctx => ` Savings: ${MM.fmt(ctx.raw)}` } },
+        },
         scales: {
-          y: { beginAtZero: false, ticks: { callback: v => '₹' + (v/1000).toFixed(0) + 'k' } },
+          y: { beginAtZero: false, ticks: { callback: v => '₹' + (v / 1000).toFixed(0) + 'k' } },
           x: { grid: { display: false } },
         },
       },
     });
+  } else {
+    noData('savingsChart', 'No transactions yet');
   }
 
-  // ── Summary table ────────────────────────────────────────────────
+  // ── Chart 4: Budget vs Spent horizontal bar ────────────────────────
+  const budCats  = data.budget_categories || [];
+  const budVals  = data.budget_values     || [];
+  const budSpent = data.budget_spent      || [];
+  if (budCats.length) {
+    makeChart('budgetChart', {
+      type: 'bar',
+      data: {
+        labels: budCats,
+        datasets: [
+          {
+            label: 'Budget',
+            data: budVals,
+            backgroundColor: 'rgba(13,148,136,.7)',
+            borderRadius: 4,
+          },
+          {
+            label: 'Spent',
+            data: budSpent,
+            backgroundColor: 'rgba(220,38,38,.7)',
+            borderRadius: 4,
+          },
+        ],
+      },
+      options: {
+        indexAxis: 'y',
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: { legend: { position: 'top' } },
+        scales: {
+          x: {
+            beginAtZero: true,
+            ticks: { callback: v => '₹' + v.toLocaleString('en-IN') },
+          },
+          y: { grid: { display: false } },
+        },
+      },
+    });
+  } else {
+    noData('budgetChart', 'No budgets set for this month');
+  }
+
+  // ── Summary Table ──────────────────────────────────────────────────
   const tbody = document.getElementById('summaryTable');
   if (!months.length) {
     tbody.innerHTML = '<tr><td colspan="4" class="text-center text-muted" style="padding:2rem">No transactions yet.</td></tr>';
