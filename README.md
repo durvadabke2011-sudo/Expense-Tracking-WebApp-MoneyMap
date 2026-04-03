@@ -29,20 +29,22 @@ MoneyMap is a Flask-based expense tracking web application that helps users mana
 
 
 MoneyMap/
-│── app.py
-│── routes.py
-│── auth.py
-│── firebase_db.py
-│── config.py
-│── reports.py
-│── requirements.txt
-│── SETUP.md
+│
+├── app.py
+├── routes.py
+├── auth.py
+├── firebase_db.py
+├── config.py
+├── reports.py
+├── requirements.txt
+├── SETUP.md
 │
 ├── templates/
 ├── static/
-├── firebase_config/ (ignored in git)
+│
+├── firebase_config/ # ignored (contains serviceAccountKey.json)
+│
 └── .gitignore
-
 
 ---
 
