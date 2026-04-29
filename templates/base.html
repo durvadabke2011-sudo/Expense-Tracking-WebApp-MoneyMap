@@ -1,0 +1,60 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{% block title %}MoneyMap{% endblock %}</title>
+  <link rel="stylesheet" href="/static/css/style.css">
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+  {% block head %}{% endblock %}
+</head>
+<body>
+<div class="layout">
+
+  <!-- ── Sidebar ─────────────────────────────────────────────────── -->
+  <aside class="sidebar" id="sidebar">
+    <div class="sidebar-logo">
+      <span class="logo-icon">💰</span>Money<span>Map</span>
+    </div>
+
+    <nav>
+      <div class="nav-section-label">Overview</div>
+      <a href="/dashboard"   class="{% if active=='dashboard'   %}active{% endif %}"><span class="nav-icon">🏠</span> Dashboard</a>
+      <a href="/analysis"    class="{% if active=='analysis'    %}active{% endif %}"><span class="nav-icon">📊</span> Analysis</a>
+
+      <div class="nav-section-label">Finance</div>
+      <a href="/categories"  class="{% if active=='categories'  %}active{% endif %}"><span class="nav-icon">🗂️</span> Categories</a>
+      <a href="/budgets"     class="{% if active=='budgets'     %}active{% endif %}"><span class="nav-icon">💰</span> Budgets</a>
+      <a href="/accounts"    class="{% if active=='accounts'    %}active{% endif %}"><span class="nav-icon">🧾</span> Accounts</a>
+      <a href="/investments" class="{% if active=='investments' %}active{% endif %}"><span class="nav-icon">📈</span> Investments</a>
+
+      <div class="nav-section-label">Tracking</div>
+      <a href="/trips"         class="{% if active=='trips'         %}active{% endif %}"><span class="nav-icon">✈️</span> Trips</a>
+      <a href="/bills"         class="{% if active=='bills'         %}active{% endif %}"><span class="nav-icon">🔔</span> Bills</a>
+      <a href="/subscriptions" class="{% if active=='subscriptions' %}active{% endif %}"><span class="nav-icon">📺</span> Subscriptions</a>
+      <a href="/emi-tracker"   class="{% if active=='emi'           %}active{% endif %}"><span class="nav-icon">🧮</span> EMI Tracker</a>
+
+      <div class="nav-section-label">Account</div>
+      <a href="/settings" class="{% if active=='settings' %}active{% endif %}"><span class="nav-icon">⚙️</span> Settings</a>
+    </nav>
+
+    <div class="sidebar-bottom">
+      <div class="user-chip">
+        <div class="user-avatar">{{ session.get('user_name','U')[0]|upper }}</div>
+        <div class="user-name">{{ session.get('user_name','User') }}</div>
+      </div>
+      <button class="logout-btn" onclick="location.href='/logout'">🚪 Logout</button>
+    </div>
+  </aside>
+
+  <!-- ── Main ───────────────────────────────────────────────────── -->
+  <main class="main">
+    {% block content %}{% endblock %}
+  </main>
+
+</div>
+<div id="toast-container"></div>
+<script src="/static/js/main.js"></script>
+{% block scripts %}{% endblock %}
+</body>
+</html>

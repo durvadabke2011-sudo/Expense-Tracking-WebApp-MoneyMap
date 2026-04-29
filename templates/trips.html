@@ -1,0 +1,177 @@
+{% extends "base.html" %}
+{% set active = "trips" %}
+{% block title %}Trips – MoneyMap{% endblock %}
+
+{% block content %}
+<div class="topbar">
+  <div class="topbar-left">
+    <h1>✈️ Trips</h1>
+    <p>Track travel budgets and expenses</p>
+  </div>
+  <div class="topbar-actions">
+    <button class="btn btn-primary btn-sm" onclick="MM.openModal('tripModal')">+ New Trip</button>
+  </div>
+</div>
+
+<div id="tripCards">
+  <div class="empty-state"><div class="empty-icon">✈️</div><p>Loading trips...</p></div>
+</div>
+
+<!-- Add Trip Modal -->
+<div class="modal-overlay" id="tripModal">
+  <div class="modal">
+    <div class="modal-header">
+      <h3>Plan a New Trip</h3>
+      <button class="modal-close" onclick="MM.closeModal('tripModal')">✕</button>
+    </div>
+    <div class="form-group">
+      <label>Destination</label>
+      <input type="text" id="tripDest" placeholder="e.g. Goa, Mumbai, Paris">
+    </div>
+    <div class="form-group">
+      <label>Start Date</label>
+      <input type="date" id="tripStart">
+    </div>
+    <div class="form-group">
+      <label>End Date</label>
+      <input type="date" id="tripEnd">
+    </div>
+    <div class="form-group">
+      <label>Budget (₹)</label>
+      <input type="number" id="tripBudget" placeholder="15000" min="0">
+    </div>
+    <button class="btn btn-primary btn-block" onclick="saveTrip()">Create Trip</button>
+  </div>
+</div>
+
+<!-- Add Expense Modal -->
+<div class="modal-overlay" id="expModal">
+  <div class="modal">
+    <div class="modal-header">
+      <h3>Add Trip Expense</h3>
+      <button class="modal-close" onclick="MM.closeModal('expModal')">✕</button>
+    </div>
+    <input type="hidden" id="expTripId">
+    <div class="form-group">
+      <label>Description</label>
+      <input type="text" id="expNote" placeholder="e.g. Hotel, Flight, Food">
+    </div>
+    <div class="form-group">
+      <label>Amount (₹)</label>
+      <input type="number" id="expAmt" placeholder="2000" min="1">
+    </div>
+    <div class="form-group">
+      <label>Date</label>
+      <input type="date" id="expDate">
+    </div>
+    <button class="btn btn-primary btn-block" onclick="saveExp()">Add Expense</button>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+async function load() {
+  const trips = await MM.get('/api/trips');
+  const el    = document.getElementById('tripCards');
+
+  if (!trips.length) {
+    el.innerHTML = '<div class="empty-state"><div class="empty-icon">✈️</div><p>No trips yet. Plan your first adventure!</p></div>';
+    return;
+  }
+
+  el.innerHTML = trips.map(t => {
+    const over = t.budget > 0 && t.spent > t.budget;
+    const pct  = t.budget > 0 ? Math.min(100, Math.round(t.spent / t.budget * 100)) : 0;
+    const barColor = over ? 'var(--danger)' : pct > 75 ? 'var(--warning)' : 'var(--success)';
+
+    const expenses = (t.expenses || []).slice(-3).reverse().map(e => `
+      <div style="display:flex;justify-content:space-between;font-size:.8rem;padding:.3rem 0;border-bottom:1px solid var(--border)">
+        <span class="text-muted">${e.date} · ${e.note || 'Expense'}</span>
+        <span class="font-mono font-bold text-danger">${MM.fmt(e.amount)}</span>
+      </div>
+    `).join('');
+
+    return `
+      <div class="card mb-2">
+        <div class="flex-between mb-1">
+          <div>
+            <div style="font-size:1.15rem;font-weight:800">✈️ ${t.destination}</div>
+            <div class="text-sm text-muted">${t.start_date} → ${t.end_date}</div>
+          </div>
+          <div style="display:flex;gap:.5rem">
+            <button class="btn btn-success btn-sm" onclick="openExpModal('${t.id}')">+ Expense</button>
+            <button class="btn btn-danger btn-sm" onclick="delTrip('${t.id}')">✕</button>
+          </div>
+        </div>
+
+        <div class="flex-between text-sm mb-1" style="margin-top:.5rem">
+          <span>Budget: <strong>${t.budget > 0 ? MM.fmt(t.budget) : 'No limit'}</strong></span>
+          <span>Spent: <strong class="${over ? 'text-danger' : 'text-success'}">${MM.fmt(t.spent)}</strong></span>
+          ${over ? '<span class="badge badge-expense">⚠️ Over budget!</span>' : ''}
+        </div>
+
+        ${t.budget > 0 ? `
+          <div class="progress-bar mb-1">
+            <div class="progress-fill" style="width:${pct}%;background:${barColor}"></div>
+          </div>
+          <div class="text-xs text-muted">${pct}% of budget used</div>
+        ` : ''}
+
+        ${expenses ? `
+          <div style="margin-top:.8rem">
+            <div class="text-xs text-muted" style="margin-bottom:.3rem;font-weight:700;text-transform:uppercase;letter-spacing:.5px">Recent Expenses</div>
+            ${expenses}
+          </div>
+        ` : ''}
+      </div>
+    `;
+  }).join('');
+}
+
+function openExpModal(tripId) {
+  document.getElementById('expTripId').value     = tripId;
+  document.getElementById('expDate').valueAsDate = new Date();
+  MM.openModal('expModal');
+}
+
+async function saveTrip() {
+  const dest  = document.getElementById('tripDest').value.trim();
+  const start = document.getElementById('tripStart').value;
+  const end   = document.getElementById('tripEnd').value;
+  if (!dest || !start || !end) return MM.toast('Destination and dates are required.', 'error');
+  await MM.post('/api/trips', {
+    destination: dest, start_date: start, end_date: end,
+    budget: parseFloat(document.getElementById('tripBudget').value) || 0,
+  });
+  MM.closeModal('tripModal');
+  MM.toast('Trip created! ✈️');
+  ['tripDest','tripStart','tripEnd','tripBudget'].forEach(id => document.getElementById(id).value = '');
+  load();
+}
+
+async function saveExp() {
+  const tid  = document.getElementById('expTripId').value;
+  const amt  = parseFloat(document.getElementById('expAmt').value);
+  const date = document.getElementById('expDate').value;
+  if (!amt || !date) return MM.toast('Amount and date are required.', 'error');
+  await MM.post(`/api/trips/${tid}/expenses`, {
+    note:   document.getElementById('expNote').value,
+    amount: amt, date,
+  });
+  MM.closeModal('expModal');
+  MM.toast('Expense added! ✅');
+  ['expNote','expAmt'].forEach(id => document.getElementById(id).value = '');
+  load();
+}
+
+async function delTrip(id) {
+  if (!confirm('Delete this trip and all its expenses?')) return;
+  await MM.del('/api/trips/' + id);
+  MM.toast('Trip deleted.');
+  load();
+}
+
+load();
+</script>
+{% endblock %}

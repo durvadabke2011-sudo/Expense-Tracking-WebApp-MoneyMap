@@ -1,0 +1,95 @@
+{% extends "base.html" %}
+{% set active = "categories" %}
+{% block title %}Categories – MoneyMap{% endblock %}
+
+{% block content %}
+<div class="topbar">
+  <div class="topbar-left">
+    <h1>🗂️ Categories</h1>
+    <p>Manage your income and expense categories</p>
+  </div>
+  <div class="topbar-actions">
+    <button class="btn btn-primary btn-sm" onclick="MM.openModal('catModal')">+ Add Category</button>
+  </div>
+</div>
+
+<div class="grid-2">
+  <div class="card">
+    <div class="card-title">💚 Income Categories</div>
+    <div id="incomeCats"></div>
+  </div>
+  <div class="card">
+    <div class="card-title">❤️ Expense Categories</div>
+    <div id="expenseCats"></div>
+  </div>
+</div>
+
+<!-- Add Category Modal -->
+<div class="modal-overlay" id="catModal">
+  <div class="modal">
+    <div class="modal-header">
+      <h3>New Category</h3>
+      <button class="modal-close" onclick="MM.closeModal('catModal')">✕</button>
+    </div>
+    <div class="form-group">
+      <label>Category Name</label>
+      <input type="text" id="catName" placeholder="e.g. Groceries">
+    </div>
+    <div class="form-group">
+      <label>Type</label>
+      <select id="catType">
+        <option value="income">Income</option>
+        <option value="expense">Expense</option>
+      </select>
+    </div>
+    <button class="btn btn-primary btn-block" onclick="saveCat()">Add Category</button>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+async function load() {
+  const cats = await MM.get('/api/categories');
+  const income  = cats.filter(c => c.type === 'income');
+  const expense = cats.filter(c => c.type === 'expense');
+
+  function renderList(list, el) {
+    if (!list.length) {
+      el.innerHTML = '<div class="empty-state" style="padding:1.5rem"><p>No categories yet.</p></div>';
+      return;
+    }
+    el.innerHTML = list.map(c => `
+      <div style="display:flex;align-items:center;justify-content:space-between;
+                  padding:.6rem .5rem;border-bottom:1px solid var(--border);">
+        <span style="font-weight:600;font-size:.9rem">${c.name}</span>
+        <button class="btn btn-danger btn-xs" onclick="delCat('${c.id}')">✕</button>
+      </div>
+    `).join('');
+  }
+
+  renderList(income,  document.getElementById('incomeCats'));
+  renderList(expense, document.getElementById('expenseCats'));
+}
+
+async function saveCat() {
+  const name = document.getElementById('catName').value.trim();
+  const type = document.getElementById('catType').value;
+  if (!name) return MM.toast('Category name is required.', 'error');
+  await MM.post('/api/categories', { name, type });
+  MM.closeModal('catModal');
+  MM.toast('Category added! ✅');
+  document.getElementById('catName').value = '';
+  load();
+}
+
+async function delCat(id) {
+  if (!confirm('Delete this category? Existing transactions will be unlinked.')) return;
+  await MM.del('/api/categories/' + id);
+  MM.toast('Category deleted.');
+  load();
+}
+
+load();
+</script>
+{% endblock %}

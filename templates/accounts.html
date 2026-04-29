@@ -1,0 +1,117 @@
+{% extends "base.html" %}
+{% set active = "accounts" %}
+{% block title %}Accounts – MoneyMap{% endblock %}
+
+{% block content %}
+<div class="topbar">
+  <div class="topbar-left">
+    <h1>🧾 Accounts</h1>
+    <p>Manage your cash, cards and UPI wallets</p>
+  </div>
+  <div class="topbar-actions">
+    <button class="btn btn-primary btn-sm" onclick="MM.openModal('accModal')">+ Add Account</button>
+  </div>
+</div>
+
+<div class="stats-grid mb-2" id="accStats">
+  <div class="stat-card balance">
+    <div class="stat-icon">💳</div>
+    <div class="stat-label">Total Balance</div>
+    <div class="stat-value num" id="totalBal">—</div>
+  </div>
+</div>
+
+<div class="card">
+  <div class="card-title">Your Accounts</div>
+  <div class="table-wrap">
+    <table>
+      <thead><tr>
+        <th>Account Name</th><th>Type</th><th class="text-right">Balance</th><th>Action</th>
+      </tr></thead>
+      <tbody id="accTable">
+        <tr><td colspan="4" class="text-center text-muted" style="padding:2rem">Loading...</td></tr>
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<!-- Add Account Modal -->
+<div class="modal-overlay" id="accModal">
+  <div class="modal">
+    <div class="modal-header">
+      <h3>New Account</h3>
+      <button class="modal-close" onclick="MM.closeModal('accModal')">✕</button>
+    </div>
+    <div class="form-group">
+      <label>Account Name</label>
+      <input type="text" id="accName" placeholder="e.g. HDFC Savings">
+    </div>
+    <div class="form-group">
+      <label>Type</label>
+      <select id="accType">
+        <option value="cash">💵 Cash</option>
+        <option value="card">💳 Card / Bank</option>
+        <option value="upi">📱 UPI Wallet</option>
+      </select>
+    </div>
+    <div class="form-group">
+      <label>Opening Balance (₹)</label>
+      <input type="number" id="accBal" placeholder="0.00" min="0" step="0.01">
+    </div>
+    <button class="btn btn-primary btn-block" onclick="saveAcc()">Add Account</button>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+const TYPE_ICONS = { cash: '💵', card: '💳', upi: '📱' };
+const TYPE_LABELS = { cash: 'Cash', card: 'Card / Bank', upi: 'UPI Wallet' };
+
+async function load() {
+  const accounts = await MM.get('/api/accounts');
+  const total = accounts.reduce((s, a) => s + (a.balance || 0), 0);
+  document.getElementById('totalBal').textContent = MM.fmt(total);
+
+  const tbody = document.getElementById('accTable');
+  if (!accounts.length) {
+    tbody.innerHTML = '<tr><td colspan="4" class="text-center text-muted" style="padding:2rem">No accounts yet. Add one to get started!</td></tr>';
+    return;
+  }
+  tbody.innerHTML = accounts.map(a => `
+    <tr>
+      <td><strong>${TYPE_ICONS[a.type] || '🏦'} ${a.name}</strong></td>
+      <td><span class="badge badge-neutral">${TYPE_LABELS[a.type] || a.type}</span></td>
+      <td class="text-right font-mono font-bold ${a.balance >= 0 ? 'text-success' : 'text-danger'}">
+        ${MM.fmt(a.balance || 0)}
+      </td>
+      <td>
+        <button class="btn btn-danger btn-xs" onclick="delAcc('${a.id}')">✕ Delete</button>
+      </td>
+    </tr>
+  `).join('');
+}
+
+async function saveAcc() {
+  const name = document.getElementById('accName').value.trim();
+  const type = document.getElementById('accType').value;
+  const bal  = parseFloat(document.getElementById('accBal').value) || 0;
+  if (!name) return MM.toast('Account name is required.', 'error');
+  await MM.post('/api/accounts', { name, type, balance: bal });
+  MM.closeModal('accModal');
+  MM.toast('Account added! ✅');
+  document.getElementById('accName').value = '';
+  document.getElementById('accBal').value  = '';
+  load();
+}
+
+async function delAcc(id) {
+  if (!confirm('Delete this account?')) return;
+  await MM.del('/api/accounts/' + id);
+  MM.toast('Account deleted.');
+  load();
+}
+
+load();
+</script>
+{% endblock %}

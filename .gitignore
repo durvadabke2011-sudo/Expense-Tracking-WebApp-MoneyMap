@@ -1,0 +1,82 @@
+# ─────────────────────────────────────────
+#  MoneyMap – Production Ready .gitignore
+# ─────────────────────────────────────────
+
+# 🔐 FIREBASE / SECRETS (CRITICAL)
+firebase_config/serviceAccountKey.json
+firebase_config/*.json
+
+# 🔐 ENV FILES
+.env
+.env.*
+!.env.example
+
+# 🐍 PYTHON
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+*.pyc
+
+# 🧪 VIRTUAL ENV
+venv/
+env/
+ENV/
+.venv/
+
+# ⚙️ FLASK
+instance/
+flask_session/
+*.log
+
+# 🗄️ DATABASE FILES
+*.sqlite
+*.sqlite3
+*.db
+
+# 📊 REPORTS / GENERATED FILES
+*.pdf
+*.xlsx
+*.xls
+static/reports/
+
+# 📁 USER UPLOADS
+static/uploads/
+static/media/
+
+# 🖥️ OS FILES
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# 💻 IDE / EDITOR
+.vscode/
+.idea/
+*.suo
+*.user
+*.swp
+*.swo
+*~
+
+# 📦 BUILD FILES
+dist/
+build/
+*.egg-info/
+.eggs/
+*.egg
+
+# 🧪 TESTING
+.pytest_cache/
+.coverage
+coverage.xml
+.tox/
+
+# 📦 NODE (if used)
+node_modules/
+npm-debug.log*
+yarn-error.log*
+
+# 🧹 MISC
+*.bak
+*.tmp
+*.orig
